@@ -177,10 +177,10 @@ def create_tables(cursor, connection):
             id INT NOT NULL AUTO_INCREMENT,
             type ENUM('normal', 'pmr', 'stair', 'empty') NULL DEFAULT 'normal',
             room_id INT NOT NULL,
-            seat_letter VARCHAR(45) NOT NULL,
-            seat_number INT NOT NULL,
+            seat_row VARCHAR(45) NOT NULL,
+            seat_column INT NOT NULL,
             PRIMARY KEY (id),
-            UNIQUE KEY unique_seat_per_room (seat_letter, seat_number, room_id),
+            UNIQUE KEY unique_seat_per_room (seat_row, seat_column, room_id),
             KEY fk_seat_room1_idx (room_id),
             CONSTRAINT fk_seat_room1 FOREIGN KEY (room_id) REFERENCES room (id) ON DELETE RESTRICT ON UPDATE CASCADE
         ) ENGINE = InnoDB
@@ -255,11 +255,11 @@ def insert_test_data(cursor, connection):
                 for seat_num in range(1, nb_columns + 1):
                     # Tous les sièges sont normaux par défaut
                     seat_type = 'normal'
-                    seat_letter = chr(64 + row)  # A, B, C, etc.
+                    seat_row = chr(64 + row)  # A, B, C, etc.
                     cursor.execute("""
-                        INSERT INTO seat (type, room_id, seat_letter, seat_number) 
+                        INSERT INTO seat (type, room_id, seat_row, seat_column) 
                         VALUES (%s, %s, %s, %s)
-                    """, (seat_type, room_id, seat_letter, seat_num))
+                    """, (seat_type, room_id, seat_row, seat_num))
         
         # Insérer des séances (plusieurs dates et horaires)
         cursor.execute("""
@@ -475,20 +475,20 @@ def create_seats_for_room(cursor, connection, room_id, nb_rows, nb_columns):
         
         print(f"  Rangée {row_letter}: {nb_columns} sièges")
         
-        for seat_number in range(1, nb_columns + 1):
+        for seat_column in range(1, nb_columns + 1):
             # Tous les sièges sont normaux par défaut
             seat_type = 'normal'
             
             # Insérer le siège dans la base de données
             cursor.execute("""
-                INSERT INTO seat (type, room_id, seat_letter, seat_number) 
+                INSERT INTO seat (type, room_id, seat_row, seat_column) 
                 VALUES (%s, %s, %s, %s)
-            """, (seat_type, room_id, row_letter, seat_number))
+            """, (seat_type, room_id, row_letter, seat_column))
             
             seats_created += 1
             
             # Debug : afficher chaque siège créé
-            print(f"    Siège {row_letter}{seat_number} (NORMAL)")
+            print(f"    Siège {row_letter}{seat_column} (NORMAL)")
     
     connection.commit()
     print(f"Total de {seats_created} sièges créés avec succès")
@@ -542,20 +542,20 @@ def get_room_seats_grid(room_id):
             
         # Récupérer tous les sièges de la salle
         cursor.execute("""
-            SELECT id, seat_letter, seat_number, type
+            SELECT id, seat_row, seat_column, type
             FROM seat 
             WHERE room_id = %s 
-            ORDER BY seat_letter, seat_number
+            ORDER BY seat_row, seat_column
         """, (room_id,))
         seats = cursor.fetchall()
         
         # Organiser en grille
         grid = {}
         for seat in seats:
-            row = seat['seat_letter']
+            row = seat['seat_row']
             if row not in grid:
                 grid[row] = {}
-            grid[row][seat['seat_number']] = {
+            grid[row][seat['seat_column']] = {
                 'id': seat['id'],
                 'type': seat['type']
             }
@@ -574,7 +574,7 @@ def get_room_seats_grid(room_id):
             cursor.close()
             connection.close()
 
-def get_seat_by_position(room_id, seat_letter, seat_number):
+def get_seat_by_position(room_id, seat_row, seat_column):
     """Récupère un siège par sa position"""
     connection = get_db_connection()
     
@@ -585,8 +585,8 @@ def get_seat_by_position(room_id, seat_letter, seat_number):
         cursor = connection.cursor(dictionary=True)
         cursor.execute("""
             SELECT * FROM seat 
-            WHERE room_id = %s AND seat_letter = %s AND seat_number = %s
-        """, (room_id, seat_letter, seat_number))
+            WHERE room_id = %s AND seat_row = %s AND seat_column = %s
+        """, (room_id, seat_row, seat_column))
         
         return cursor.fetchone()
         
@@ -732,7 +732,7 @@ def get_seats_for_seance(seance_id):
             JOIN seance se ON s.room_id = se.room_id
             LEFT JOIN seatreservation sr ON s.id = sr.seat_id AND sr.seance_id = %s
             WHERE se.id = %s
-            ORDER BY s.seat_letter, s.seat_number
+            ORDER BY s.seat_row, s.seat_column
         """, (seance_id, seance_id))
         seats = cursor.fetchall()
         return seats
@@ -876,10 +876,10 @@ def get_room_layout(room_id):
     try:
         cursor = connection.cursor(dictionary=True)
         cursor.execute("""
-            SELECT seat_letter, seat_number, type
+            SELECT seat_row, seat_column, type
             FROM seat 
             WHERE room_id = %s 
-            ORDER BY seat_letter, seat_number
+            ORDER BY seat_row, seat_column
         """, (room_id,))
         seats = cursor.fetchall()
         
@@ -889,11 +889,11 @@ def get_room_layout(room_id):
         # Organiser les sièges par rangée
         layout = {}
         for seat in seats:
-            row = seat['seat_letter']
+            row = seat['seat_row']
             if row not in layout:
                 layout[row] = []
             layout[row].append({
-                'number': seat['seat_number'],
+                'number': seat['seat_column'],
                 'type': seat['type']
             })
         

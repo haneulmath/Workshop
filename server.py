@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 from flask import Flask, render_template, jsonify, request, redirect, url_for, session, flash
 from flask_cors import CORS
-import modele  # Import du module pour la gestion de la base de données
+import old.modele as modele  # Import du module pour la gestion de la base de données
 from datetime import datetime
 
 app = Flask(__name__)
@@ -108,11 +108,11 @@ def get_seance_seats(seance_id):
     for seat in seats:
         formatted_seats.append({
             'id': seat['id'],
-            'row': seat['seat_letter'],
-            'number': seat['seat_number'],
+            'row': seat['seat_row'],
+            'column': seat['seat_column'],
             'type': seat['type'],  # nouveau champ: normal, pmr, stair, empty
             'occupied': bool(seat['occupied']),
-            'label': f"{seat['seat_letter']}{seat['seat_number']}"  # A1, A2, etc.
+            'label': f"{seat['seat_column']}{seat['seat_column']}"  # A1, A2, etc.
         })
     
     return jsonify(formatted_seats)
@@ -242,4 +242,4 @@ if __name__ == "__main__":
     modele.initialize_database()
     
     print("Démarrage du serveur Flask sur le port 5001...")
-    app.run(debug=True, port=5001)
+    app.run(debug=True, port=5002)

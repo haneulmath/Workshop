@@ -158,8 +158,8 @@ CREATE TABLE IF NOT EXISTS `seat` (
   `id` INT NOT NULL AUTO_INCREMENT,
   `pmr` TINYINT NULL DEFAULT NULL,
   `room_id` INT NOT NULL,
-  `seat_letter` VARCHAR(45) NOT NULL,
-  `seat_number` INT NOT NULL,
+  `seat_row` VARCHAR(45) NOT NULL,
+  `seat_column` INT NOT NULL,
   PRIMARY KEY (`id`),
   CONSTRAINT `fk_seat_room1`
     FOREIGN KEY (`room_id`)
@@ -170,7 +170,7 @@ ENGINE = InnoDB;
 
 CREATE INDEX `fk_seat_room1_idx` ON `seat` (`room_id` ASC) VISIBLE;
 
-CREATE UNIQUE INDEX `unique_seat_per_room` ON `seat` (`seat_number` ASC, `room_id` ASC) VISIBLE;
+CREATE UNIQUE INDEX `unique_seat_per_room` ON `seat` (`seat_column` ASC, `room_id` ASC) VISIBLE;
 
 CREATE INDEX `fk_seat_room1` ON `seat` (`room_id` ASC) VISIBLE;
 

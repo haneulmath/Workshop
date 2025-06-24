@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import modele
+import old.modele as modele
 
 if __name__ == "__main__":
     print("🔄 Réinitialisation forcée de la base de données...")

@@ -4,7 +4,7 @@
 Script de test pour vérifier les nouveaux types de sièges
 """
 
-import modele
+import old.modele as modele
 
 def test_seat_types():
     """Teste les nouveaux types de sièges"""
@@ -81,7 +81,7 @@ def test_seance_seats_api():
             # Afficher quelques exemples
             print("\nExemples de sièges:")
             for i, seat in enumerate(seats[:5]):
-                print(f"- {seat['seat_letter']}{seat['seat_number']}: type={seat['type']}, occupé={seat['occupied']}")
+                print(f"- {seat['seat_row']}{seat['seat_column']}: type={seat['type']}, occupé={seat['occupied']}")
         else:
             print("Erreur: aucun siège récupéré")
     else:

@@ -8,7 +8,7 @@ import sys
 import os
 sys.path.append(os.path.dirname(__file__))
 
-import modele
+import old.modele as modele
 
 def test_room_creation():
     """Test de création d'une salle avec génération automatique des sièges"""
@@ -90,7 +90,7 @@ def explain_seat_generation():
     print("- Rangées nommées A, B, C, D, ...")
     print("- Sièges numérotés 1, 2, 3, ... dans chaque rangée")
     print("- Les sièges A1 et A2 sont automatiquement marqués PMR")
-    print("- Structure: seat_letter (VARCHAR) + seat_number (INT)")
+    print("- Structure: seat_row (VARCHAR) + seat_column (INT)")
 
 def show_database_structure():
     """Montre la structure de la table seat"""
@@ -101,14 +101,14 @@ def show_database_structure():
     print("├── id (INT, AUTO_INCREMENT, PRIMARY KEY)")
     print("├── pmr (TINYINT, 0=normal, 1=PMR)")
     print("├── room_id (INT, FOREIGN KEY vers room.id)")
-    print("├── seat_letter (VARCHAR(45), A, B, C, ...)")
-    print("└── seat_number (INT, 1, 2, 3, ...)")
+    print("├── seat_row (VARCHAR(45), A, B, C, ...)")
+    print("└── seat_column (INT, 1, 2, 3, ...)")
     print()
-    print("Contrainte unique: (seat_letter, seat_number, room_id)")
+    print("Contrainte unique: (seat_row, seat_column, room_id)")
     print("→ Chaque combinaison lettre+numéro est unique par salle")
     print()
     print("Exemples de données:")
-    print("| id | pmr | room_id | seat_letter | seat_number |")
+    print("| id | pmr | room_id | seat_row | seat_column |")
     print("|----|-----|---------|-------------|-------------|")
     print("| 1  | 1   | 1       | A           | 1           | ← PMR")
     print("| 2  | 1   | 1       | A           | 2           | ← PMR")
