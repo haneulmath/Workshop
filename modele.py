@@ -111,6 +111,28 @@ def get_all_movies():
             cursor.close()
             connection.close()
 
+def get_movie_by_id(movie_id):
+    """Récupère un film par son ID"""
+    connection = get_db_connection()
+    
+    if connection is None:
+        return None
+        
+    try:
+        cursor = connection.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM movie WHERE id = %s", (movie_id,))
+        movie = cursor.fetchone()
+        return movie
+        
+    except Error as e:
+        print(f"Erreur lors de la récupération du film: {e}")
+        return None
+        
+    finally:
+        if connection.is_connected():
+            cursor.close()
+            connection.close()
+
 def add_movie(name, duration):
     """Ajoute un nouveau film"""
     connection = get_db_connection()
@@ -445,10 +467,8 @@ def get_seance_info(seance_id):
             cursor.close()
             connection.close()
 
-# ===== FONCTIONS POUR LES SIÈGES ET RÉSERVATIONS =====
-
-def get_seats_for_seance(seance_id):
-    """Récupère tous les sièges d'une séance avec leur statut"""
+def get_seance_by_id(seance_id):
+    """Récupère une séance par son ID avec les informations du film et de la salle"""
     connection = get_db_connection()
     
     if connection is None:
@@ -457,19 +477,27 @@ def get_seats_for_seance(seance_id):
     try:
         cursor = connection.cursor(dictionary=True)
         cursor.execute("""
-            SELECT s.*, 
-                   CASE WHEN sr.seat_id IS NOT NULL THEN 1 ELSE 0 END as occupied
-            FROM seat s
-            JOIN seance se ON s.room_id = se.room_id
-            LEFT JOIN seatreservation sr ON s.id = sr.seat_id AND sr.seance_id = %s
-            WHERE se.id = %s
-            ORDER BY s.seat_row, s.seat_column
-        """, (seance_id, seance_id))
-        seats = cursor.fetchall()
-        return seats
+            SELECT s.*, m.name as movie, m.duration, r.name as room, r.id as room_id
+            FROM seance s
+            JOIN movie m ON s.movie_id = m.id
+            JOIN room r ON s.room_id = r.id
+            WHERE s.id = %s
+        """, (seance_id,))
+        seance = cursor.fetchone()
+        
+        if seance:
+            # Convertir le prix de centimes en euros
+            seance['price'] = seance['baseprice'] / 100
+            # S'assurer que time est un objet time
+            if isinstance(seance['starttime'], str):
+                seance['time'] = seance['starttime']
+            else:
+                seance['time'] = str(seance['starttime'])
+        
+        return seance
         
     except Error as e:
-        print(f"Erreur lors de la récupération des sièges: {e}")
+        print(f"Erreur lors de la récupération de la séance: {e}")
         return None
         
     finally:
@@ -477,77 +505,148 @@ def get_seats_for_seance(seance_id):
             cursor.close()
             connection.close()
 
-def create_booking(account_id, seance_id, spectators_data):
-    """Crée une réservation avec les spectateurs"""
+def get_seance_seats_grid(seance_id):
+    """Récupère la grille de sièges pour une séance donnée"""
     connection = get_db_connection()
     
     if connection is None:
-        return False, "Erreur de connexion à la base de données"
+        return None
         
     try:
-        cursor = connection.cursor()
+        cursor = connection.cursor(dictionary=True)
         
-        # Calculer le prix total
-        total_price = calculate_total_price(cursor, seance_id, spectators_data)
-        
-        # Créer la réservation
+        # Récupérer les informations de la salle
         cursor.execute("""
-            INSERT INTO booking (price, account_id, seance_id) 
-            VALUES (%s, %s, %s)
-        """, (total_price, account_id, seance_id))
-        booking_id = cursor.lastrowid
+            SELECT r.* FROM room r
+            JOIN seance s ON r.id = s.room_id
+            WHERE s.id = %s
+        """, (seance_id,))
+        room = cursor.fetchone()
         
-        # Ajouter chaque spectateur et sa réservation de siège
-        for spectator in spectators_data:
-            # Ajouter le spectateur
-            cursor.execute("""
-                INSERT INTO customer (firstname, lastname, age, pmr, booking_id) 
-                VALUES (%s, %s, %s, %s, %s)
-            """, (spectator['firstname'], spectator['lastname'], 
-                 spectator['age'], spectator.get('pmr', 0), booking_id))
-            customer_id = cursor.lastrowid
-            
-            # Réserver le siège
-            cursor.execute("""
-                INSERT INTO seatreservation (customer_id, seance_id, seat_id) 
-                VALUES (%s, %s, %s)
-            """, (customer_id, seance_id, spectator['seat_id']))
+        if not room:
+            return None
         
-        connection.commit()
-        return True, f"Réservation créée avec succès (Total: {total_price/100:.2f}€)"
+        # Récupérer tous les sièges de la salle avec leur statut pour cette séance
+        cursor.execute("""
+            SELECT 
+                s.id, s.type, s.seat_row, s.seat_column,
+                CASE 
+                    WHEN sr.seat_id IS NOT NULL THEN 'occupied'
+                    ELSE 'available'
+                END as status
+            FROM seat s
+            LEFT JOIN seatreservation sr ON s.id = sr.seat_id AND sr.seance_id = %s
+            WHERE s.room_id = %s
+            ORDER BY s.seat_row, s.seat_column
+        """, (seance_id, room['id']))
+        seats = cursor.fetchall()
+        
+        # Créer la grille
+        grid = []
+        for row in range(1, room['nb_rows'] + 1):
+            grid_row = []
+            for col in range(1, room['nb_columns'] + 1):
+                # Trouver le siège correspondant
+                seat = next((seat for seat in seats 
+                           if seat['seat_row'] == row and seat['seat_column'] == col), None)
+                grid_row.append(seat)
+            grid.append(grid_row)
+        
+        return {
+            'room': room,
+            'grid': grid
+        }
         
     except Error as e:
-        return False, f"Erreur lors de la création de la réservation: {e}"
+        print(f"Erreur lors de la récupération de la grille de sièges: {e}")
+        return None
         
     finally:
         if connection.is_connected():
             cursor.close()
             connection.close()
 
-def calculate_total_price(cursor, seance_id, spectators_data):
-    """Calcule le prix total d'une réservation"""
-    # Récupérer le prix de base de la séance
-    cursor.execute("SELECT baseprice FROM seance WHERE id = %s", (seance_id,))
-    base_price = cursor.fetchone()[0]
+def book_seats(seance_id, seat_ids, user_id):
+    """Effectue une réservation pour les sièges sélectionnés"""
+    connection = get_db_connection()
     
-    # Récupérer les tarifs par âge
-    cursor.execute("SELECT * FROM ageprice ORDER BY agemin")
-    age_prices = cursor.fetchall()
-    
-    total = 0
-    for spectator in spectators_data:
-        age = spectator['age']
-        factor = 1.0  # Par défaut
+    if connection is None:
+        return False, "Erreur de connexion à la base de données"
         
-        # Trouver le bon tarif selon l'âge
-        for price_rule in age_prices:
-            if price_rule[2] <= age <= price_rule[3]:  # agemin <= age <= agemax
-                factor = float(price_rule[4])  # factor
-                break
+    try:
+        cursor = connection.cursor(dictionary=True)
         
-        total += base_price * factor
-    
-    return int(total)
+        # Vérifier que tous les sièges sont disponibles
+        seat_ids_str = ','.join(map(str, seat_ids))
+        cursor.execute(f"""
+            SELECT s.id, s.seat_row, s.seat_column, s.type,
+                   se.baseprice, m.name as movie, r.name as room, se.date, se.starttime
+            FROM seat s
+            JOIN room r ON s.room_id = r.id
+            JOIN seance se ON r.id = se.room_id
+            JOIN movie m ON se.movie_id = m.id
+            LEFT JOIN seatreservation sr ON s.id = sr.seat_id AND sr.seance_id = %s
+            WHERE s.id IN ({seat_ids_str}) AND se.id = %s AND sr.seat_id IS NULL
+        """, (seance_id, seance_id))
+        
+        available_seats = cursor.fetchall()
+        
+        if len(available_seats) != len(seat_ids):
+            return False, "Certains sièges ne sont plus disponibles"
+        
+        # Calculer le prix total
+        price_per_seat = available_seats[0]['baseprice'] / 100
+        total_price = price_per_seat * len(seat_ids)
+        
+        # Créer la réservation principale
+        cursor.execute("""
+            INSERT INTO booking (price, account_id, seance_id) 
+            VALUES (%s, %s, %s)
+        """, (int(total_price * 100), user_id, seance_id))
+        booking_id = cursor.lastrowid
+        
+        # Créer les clients et réservations de sièges
+        for i, seat in enumerate(available_seats):
+            # Créer un client fictif pour chaque siège (en production, vous devriez demander ces infos)
+            cursor.execute("""
+                INSERT INTO customer (firstname, lastname, age, pmr, booking_id) 
+                VALUES (%s, %s, %s, %s, %s)
+            """, (f"Client{i+1}", "Nom", 25, 0, booking_id))
+            customer_id = cursor.lastrowid
+            
+            # Créer la réservation de siège
+            cursor.execute("""
+                INSERT INTO seatreservation (customer_id, seance_id, seat_id) 
+                VALUES (%s, %s, %s)
+            """, (customer_id, seance_id, seat['id']))
+        
+        connection.commit()
+        
+        # Préparer les données de retour
+        booking_data = {
+            'movie': available_seats[0]['movie'],
+            'room': available_seats[0]['room'],
+            'date': available_seats[0]['date'],
+            'time': str(available_seats[0]['starttime']),
+            'seats': [{'row': seat['seat_row'], 'col': seat['seat_column'], 'type': seat['type']} 
+                     for seat in available_seats],
+            'price_per_seat': price_per_seat,
+            'total_price': total_price
+        }
+        
+        return True, {
+            'booking_id': booking_id,
+            'booking': booking_data
+        }
+        
+    except Error as e:
+        print(f"Erreur lors de la réservation: {e}")
+        return False, f"Erreur lors de la réservation: {e}"
+        
+    finally:
+        if connection.is_connected():
+            cursor.close()
+            connection.close()
 
 # ===== FONCTIONS UTILITAIRES =====
 

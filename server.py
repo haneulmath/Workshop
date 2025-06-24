@@ -4,6 +4,7 @@ from flask import Flask, render_template, jsonify, request, redirect, url_for, s
 from flask_cors import CORS
 import modele  # Import du module pour la gestion de la base de données
 from datetime import datetime
+import json
 
 app = Flask(__name__)
 app.secret_key = 'votre_clef_secrete_cinema'  # Changez ceci en production
@@ -11,14 +12,115 @@ CORS(app)
 
 @app.route('/')
 def index():
-    """Page d'accueil - Interface de réservation"""
-    return render_template('index.html')
+    """Page d'accueil - Redirection vers home"""
+    return redirect(url_for('home'))
+
+@app.route('/home')
+def home():
+    """Page d'accueil principale"""
+    return render_template('home.html')
+
+@app.route('/movies')
+def movies():
+    """Page des films"""
+    movies = modele.get_all_movies()
+    if movies is None:
+        flash('Erreur lors de la récupération des films', 'error')
+        return redirect(url_for('home'))
+    return render_template('movies.html', movies=movies)
+
+@app.route('/movie/<int:movie_id>')
+def movie_detail(movie_id):
+    """Page de détail d'un film avec ses séances"""
+    movie = modele.get_movie_by_id(movie_id)
+    if not movie:
+        flash('Film non trouvé', 'error')
+        return redirect(url_for('movies'))
+    
+    seances = modele.get_seances_by_movie(movie_id)
+    if seances is None:
+        flash('Erreur lors de la récupération des séances', 'error')
+        return redirect(url_for('movies'))
+    
+    return render_template('movie_detail.html', movie=movie, seances=seances)
+
+@app.route('/seances/today')
+def seances_today():
+    """Page des séances d'aujourd'hui"""
+    seances = modele.get_seances_today()
+    if seances is None:
+        flash('Erreur lors de la récupération des séances', 'error')
+        return redirect(url_for('home'))
+    return render_template('seances_today.html', seances=seances)
+
+@app.route('/seance/<int:seance_id>/seats')
+def seance_seats(seance_id):
+    """Page de sélection des sièges pour une séance"""
+    # Récupérer les informations de la séance
+    seance = modele.get_seance_by_id(seance_id)
+    if not seance:
+        flash('Séance non trouvée', 'error')
+        return redirect(url_for('seances_today'))
+    
+    # Récupérer les informations de la salle et la grille de sièges
+    seats_data = modele.get_seance_seats_grid(seance_id)
+    if not seats_data:
+        flash('Erreur lors de la récupération des sièges', 'error')
+        return redirect(url_for('seances_today'))
+    
+    room = seats_data['room']
+    grid = seats_data['grid']
+    
+    return render_template('seance_seats.html', 
+                         seance=seance, 
+                         room=room, 
+                         grid=grid)
+
+@app.route('/booking', methods=['POST'])
+def book_seats():
+    """Confirmer une réservation"""
+    seance_id = request.form.get('seance_id')
+    selected_seats = request.form.get('selected_seats')
+    
+    if not seance_id or not selected_seats:
+        flash('Données de réservation manquantes', 'error')
+        return redirect(url_for('seances_today'))
+    
+    try:
+        seance_id = int(seance_id)
+        seat_ids = json.loads(selected_seats)
+        
+        if not seat_ids:
+            flash('Aucune place sélectionnée', 'error')
+            return redirect(url_for('seance_seats', seance_id=seance_id))
+        
+        # Effectuer la réservation
+        success, result = modele.book_seats(seance_id, seat_ids, session.get('user_id', 1))
+        
+        if success:
+            return render_template('booking_confirmation.html', 
+                                 success=True, 
+                                 booking_id=result['booking_id'],
+                                 booking=result['booking'])
+        else:
+            return render_template('booking_confirmation.html', 
+                                 success=False, 
+                                 error_message=result,
+                                 seance_id=seance_id)
+    
+    except (ValueError, json.JSONDecodeError) as e:
+        flash('Données de réservation invalides', 'error')
+        return redirect(url_for('seance_seats', seance_id=seance_id))
 
 # ===== ROUTES D'AUTHENTIFICATION =====
 
-@app.route('/login', methods=['POST'])
-def login():
-    """Connexion utilisateur"""
+@app.route('/login', methods=['GET', 'POST'])
+def login_form():
+    """Formulaire de connexion et traitement"""
+    if request.method == 'GET':
+        return render_template('login.html')
+    
+    # POST - traitement de la connexion
     if request.is_json:
         data = request.get_json()
         username = data.get('username')
@@ -28,16 +130,28 @@ def login():
         password = request.form.get('password')
     
     if not username or not password:
-        return jsonify({'success': False, 'message': 'Nom d\'utilisateur et mot de passe requis'}), 400
+        if request.is_json:
+            return jsonify({'success': False, 'message': 'Nom d\'utilisateur et mot de passe requis'}), 400
+        else:
+            flash('Nom d\'utilisateur et mot de passe requis', 'error')
+            return redirect(url_for('login_form'))
     
     # Pour simplifier, on accepte n'importe quel nom d'utilisateur avec un mot de passe
     # En production, utilisez une vraie authentification
     if password:  # Simple vérification non-vide
         session['user_id'] = 1  # ID utilisateur fictif
         session['username'] = username
-        return jsonify({'success': True, 'message': 'Connexion réussie'})
+        if request.is_json:
+            return jsonify({'success': True, 'message': 'Connexion réussie'})
+        else:
+            flash('Connexion réussie', 'success')
+            return redirect(url_for('home'))
     else:
-        return jsonify({'success': False, 'message': 'Mot de passe incorrect'}), 401
+        if request.is_json:
+            return jsonify({'success': False, 'message': 'Mot de passe incorrect'}), 401
+        else:
+            flash('Mot de passe incorrect', 'error')
+            return redirect(url_for('login_form'))
 
 @app.route('/logout')
 def logout():

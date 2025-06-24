@@ -1,0 +1,366 @@
+{% extends "base.html" %}
+
+{% block title %}Sélection des places - {{ seance.movie }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <!-- En-tête de la séance -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <h2 class="card-title">{{ seance.movie }}</h2>
+                            <p class="text-muted mb-1">
+                                <i class="fas fa-calendar"></i> {{ seance.date.strftime('%d/%m/%Y') }}
+                                <i class="fas fa-clock ms-3"></i> {{ seance.time }}
+                            </p>
+                            <p class="text-muted mb-0">
+                                <i class="fas fa-door-open"></i> Salle {{ seance.room }}
+                            </p>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <div class="price-info">
+                                <span class="text-muted">Prix par place:</span>
+                                <h4 class="text-primary mb-0">{{ "%.2f"|format(seance.price) }}€</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Écran -->
+            <div class="screen text-center mb-4">
+                <i class="fas fa-tv"></i> ÉCRAN
+            </div>
+
+            <!-- Grille de sièges -->
+            <div class="seat-container mb-4">
+                <div class="seat-grid" data-columns="{{ room.nb_columns }}">
+                    <!-- En-têtes de colonnes -->
+                    <div></div> <!-- Espace pour les labels de lignes -->
+                    {% for col in range(1, room.nb_columns + 1) %}
+                    <div class="col-label">{{ col }}</div>
+                    {% endfor %}
+                    
+                    <!-- Grille avec sièges -->
+                    {% for row in range(room.nb_rows) %}
+                    <div class="row-label">{{ row + 1 }}</div>
+                    {% for col in range(room.nb_columns) %}
+                        {% set seat = grid[row][col] %}
+                        {% if seat %}
+                        <div class="seat {{ seat.type }} {% if seat.status == 'occupied' %}occupied{% endif %}" 
+                             data-seat-id="{{ seat.id }}"
+                             data-row="{{ row + 1 }}" 
+                             data-col="{{ col + 1 }}"
+                             {% if seat.type not in ['stair', 'empty'] and seat.status != 'occupied' %}
+                             onclick="toggleSeat(this)"
+                             {% else %}
+                             style="cursor: not-allowed;"
+                             {% endif %}>
+                            {{ row + 1 }}{{ col + 1 }}
+                        </div>
+                        {% else %}
+                        <div class="seat empty" style="cursor: not-allowed;">-</div>
+                        {% endif %}
+                    {% endfor %}
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Légende -->
+            <div class="legend mb-4">
+                <div class="legend-item">
+                    <div class="legend-seat normal"></div>
+                    <span>Disponible</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-seat pmr"></div>
+                    <span>PMR</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-seat selected" style="background-color: #0d6efd;"></div>
+                    <span>Sélectionné</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-seat occupied" style="background-color: #dc3545;"></div>
+                    <span>Occupé</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-seat stair"></div>
+                    <span>Escalier</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-seat empty"></div>
+                    <span>Vide</span>
+                </div>
+            </div>
+
+            <!-- Résumé de sélection -->
+            <div class="selection-summary card mb-4" id="selection-summary" style="display: none;">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <h5 class="mb-1">Places sélectionnées</h5>
+                            <div id="selected-seats-list"></div>
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Total: <span id="total-price">0.00</span>€</strong>
+                        </div>
+                        <div class="col-md-3">
+                            <form method="POST" action="{{ url_for('book_seats') }}" id="booking-form">
+                                <input type="hidden" name="seance_id" value="{{ seance.id }}">
+                                <input type="hidden" name="selected_seats" id="selected-seats-input">
+                                <button type="submit" class="btn btn-success w-100" id="confirm-booking">
+                                    Confirmer la réservation
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Boutons de navigation -->
+            <div class="d-flex justify-content-between">
+                <a href="{{ url_for('movie_detail', movie_id=seance.movie_id) }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Retour au film
+                </a>
+                <a href="{{ url_for('home') }}" class="btn btn-outline-primary">
+                    <i class="fas fa-home"></i> Accueil
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.screen {
+    background-color: #333;
+    color: white;
+    padding: 15px;
+    border-radius: 8px;
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.seat-container {
+    overflow-x: auto;
+    padding: 20px;
+}
+
+.seat-grid {
+    display: grid;
+    gap: 8px;
+    padding: 20px;
+    border: 2px solid #dee2e6;
+    border-radius: 15px;
+    background-color: #f8f9fa;
+    max-width: fit-content;
+    margin: 0 auto;
+    min-width: 600px;
+}
+
+/* Ajout des colonnes via JavaScript */
+.seat-grid[data-columns] {
+    grid-template-columns: auto repeat(var(--grid-columns), 1fr);
+}
+
+.row-label, .col-label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    color: #495057;
+    font-size: 14px;
+}
+
+.seat {
+    width: 40px;
+    height: 40px;
+    border: 2px solid #6c757d;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    color: white;
+    user-select: none;
+}
+
+.seat:hover:not(.occupied):not(.stair):not(.empty) {
+    transform: scale(1.1);
+    border-width: 3px;
+}
+
+.seat.normal {
+    background-color: #6c757d;
+    border-color: #6c757d;
+}
+
+.seat.pmr {
+    background-color: #ffc107;
+    border-color: #ffc107;
+    color: #000;
+}
+
+.seat.stair {
+    background-color: #17a2b8;
+    border-color: #17a2b8;
+    color: white;
+}
+
+.seat.empty {
+    background-color: transparent;
+    border: 2px dashed #6c757d;
+    color: #6c757d;
+}
+
+.seat.selected {
+    background-color: #0d6efd !important;
+    border-color: #0d6efd !important;
+    color: white !important;
+    transform: scale(1.1);
+}
+
+.seat.occupied {
+    background-color: #dc3545 !important;
+    border-color: #dc3545 !important;
+    color: white !important;
+}
+
+.legend {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    flex-wrap: wrap;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+}
+
+.legend-seat {
+    width: 24px;
+    height: 24px;
+    border-radius: 5px;
+    border: 2px solid;
+}
+
+.legend-seat.normal {
+    background-color: #6c757d;
+    border-color: #6c757d;
+}
+
+.legend-seat.pmr {
+    background-color: #ffc107;
+    border-color: #ffc107;
+}
+
+.legend-seat.stair {
+    background-color: #17a2b8;
+    border-color: #17a2b8;
+}
+
+.legend-seat.empty {
+    background-color: transparent;
+    border: 2px dashed #6c757d;
+}
+
+.price-info {
+    text-align: right;
+}
+
+@media (max-width: 768px) {
+    .seat-grid {
+        min-width: auto;
+        padding: 10px;
+    }
+    
+    .seat {
+        width: 32px;
+        height: 32px;
+        font-size: 8px;
+    }
+    
+    .legend {
+        gap: 15px;
+    }
+    
+    .price-info {
+        text-align: left;
+        margin-top: 15px;
+    }
+}
+</style>
+
+<script>
+let selectedSeats = [];
+const seatPrice = parseFloat('{{ seance.price }}');
+
+// Initialiser la grille CSS
+document.addEventListener('DOMContentLoaded', function() {
+    const grid = document.querySelector('.seat-grid');
+    const columns = grid.dataset.columns;
+    grid.style.setProperty('--grid-columns', columns);
+    grid.style.gridTemplateColumns = `auto repeat(${columns}, 1fr)`;
+    updateSelectionSummary();
+});
+    const seatId = seatElement.dataset.seatId;
+    const row = seatElement.dataset.row;
+    const col = seatElement.dataset.col;
+    
+    if (seatElement.classList.contains('selected')) {
+        // Désélectionner
+        seatElement.classList.remove('selected');
+        selectedSeats = selectedSeats.filter(seat => seat.id !== seatId);
+    } else {
+        // Sélectionner
+        seatElement.classList.add('selected');
+        selectedSeats.push({
+            id: seatId,
+            row: row,
+            col: col
+        });
+    }
+    
+    updateSelectionSummary();
+}
+
+function updateSelectionSummary() {
+    const summaryDiv = document.getElementById('selection-summary');
+    const seatsList = document.getElementById('selected-seats-list');
+    const totalPrice = document.getElementById('total-price');
+    const seatsInput = document.getElementById('selected-seats-input');
+    
+    if (selectedSeats.length === 0) {
+        summaryDiv.style.display = 'none';
+    } else {
+        summaryDiv.style.display = 'block';
+        
+        // Mettre à jour la liste des sièges
+        seatsList.innerHTML = selectedSeats.map(seat => 
+            `<span class="badge bg-primary me-1">Rangée ${seat.row}, Place ${seat.col}</span>`
+        ).join('');
+        
+        // Mettre à jour le prix total
+        const total = selectedSeats.length * seatPrice;
+        totalPrice.textContent = total.toFixed(2);
+        
+        // Mettre à jour le champ caché pour le formulaire
+        seatsInput.value = JSON.stringify(selectedSeats.map(seat => seat.id));
+    }
+}
+
+// Initialisation
+document.addEventListener('DOMContentLoaded', function() {
+    updateSelectionSummary();
+});
+</script>
+{% endblock %}

@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}Accueil - Cinema Palace{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="jumbotron bg-primary text-white text-center p-5 rounded mb-4">
+            <h1 class="display-4">Bienvenue au Cinema Palace</h1>
+            <p class="lead">Découvrez nos films et réservez vos places en ligne</p>
+            <a class="btn btn-light btn-lg" href="{{ url_for('movies') }}" role="button">Voir les films</a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5>🎬 Films à l'affiche</h5>
+            </div>
+            <div class="card-body">
+                {% if movies %}
+                    <div class="list-group">
+                        {% for movie in movies[:3] %}
+                        <div class="list-group-item">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1">{{ movie.name }}</h6>
+                                <small>{{ movie.duration }} min</small>
+                            </div>
+                            <a href="{{ url_for('movie_detail', movie_id=movie.id) }}" class="btn btn-sm btn-primary">Voir les séances</a>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <div class="text-center mt-3">
+                        <a href="{{ url_for('movies') }}" class="btn btn-outline-primary">Voir tous les films</a>
+                    </div>
+                {% else %}
+                    <p class="text-muted">Aucun film disponible pour le moment.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5>🕐 Séances d'aujourd'hui</h5>
+            </div>
+            <div class="card-body">
+                {% if seances_today %}
+                    <div class="list-group">
+                        {% for seance in seances_today[:3] %}
+                        <div class="list-group-item">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1">{{ seance.movie_name }}</h6>
+                                <small>{{ seance.starttime }}</small>
+                            </div>
+                            <p class="mb-1">{{ seance.room_name }} - {{ "%.2f"|format(seance.baseprice / 100) }}€</p>
+                            <a href="{{ url_for('seance_seats', seance_id=seance.id) }}" class="btn btn-sm btn-success">Réserver</a>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <div class="text-center mt-3">
+                        <a href="{{ url_for('seances_today') }}" class="btn btn-outline-success">Voir toutes les séances</a>
+                    </div>
+                {% else %}
+                    <p class="text-muted">Aucune séance programmée aujourd'hui.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

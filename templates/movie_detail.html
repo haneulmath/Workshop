@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block title %}{{ movie.name }} - Cinema Palace{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Accueil</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('movies') }}">Films</a></li>
+                <li class="breadcrumb-item active" aria-current="page">{{ movie.name }}</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h2>🎬 {{ movie.name }}</h2>
+            </div>
+            <div class="card-body">
+                <p><strong>Durée:</strong> {{ movie.duration }} minutes</p>
+                
+                <h4>Séances disponibles</h4>
+                {% if seances %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Heure</th>
+                                    <th>Salle</th>
+                                    <th>Prix</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for seance in seances %}
+                                <tr>
+                                    <td>{{ seance.date.strftime('%d/%m/%Y') }}</td>
+                                    <td>{{ seance.starttime }}</td>
+                                    <td>{{ seance.room_name }}</td>
+                                    <td>{{ "%.2f"|format(seance.baseprice / 100) }}€</td>
+                                    <td>
+                                        <a href="{{ url_for('seance_seats', seance_id=seance.id) }}" class="btn btn-sm btn-success">
+                                            Réserver
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="alert alert-warning">
+                        <p>Aucune séance programmée pour ce film.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5>Informations</h5>
+            </div>
+            <div class="card-body">
+                <p><strong>Titre:</strong> {{ movie.name }}</p>
+                <p><strong>Durée:</strong> {{ movie.duration }} minutes</p>
+                <p><strong>Nombre de séances:</strong> {{ seances|length if seances else 0 }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
