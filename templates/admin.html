@@ -422,11 +422,12 @@
             }
             
             function generateSeatsGrid(data) {
+                console.log('Données des sièges:', data);
                 const { room, grid } = data;
                 seatsGrid.innerHTML = '';
                 
                 // Générer les rangées (A, B, C, ...)
-                for (let rowIndex = 1; rowIndex <= room.rows; rowIndex++) {
+                for (let rowIndex = 1; rowIndex <= room.nb_rows; rowIndex++) {
                     const rowLetter = String.fromCharCode(64 + rowIndex);
                     const rowDiv = document.createElement('div');
                     rowDiv.className = 'seats-row';
@@ -438,7 +439,7 @@
                     rowDiv.appendChild(rowLabel);
                     
                     // Sièges de la rangée
-                    for (let colIndex = 1; colIndex <= room.columns; colIndex++) {
+                    for (let colIndex = 1; colIndex <= room.nb_columns; colIndex++) {
                         const seatDiv = document.createElement('div');
                         seatDiv.className = 'seat-admin';
                         seatDiv.textContent = colIndex;
