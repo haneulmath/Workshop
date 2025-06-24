@@ -417,34 +417,6 @@ def add_seance(date, starttime, baseprice, room_id, movie_id):
             cursor.close()
             connection.close()
 
-def get_seance_info(seance_id):
-    """Récupère les informations d'une séance avec les détails de la salle"""
-    connection = get_db_connection()
-    
-    if connection is None:
-        return None
-        
-    try:
-        cursor = connection.cursor(dictionary=True)
-        cursor.execute("""
-            SELECT s.*, r.name as room_name, r.nb_rows, r.nb_columns, m.name as movie_name
-            FROM seance s
-            JOIN room r ON s.room_id = r.id
-            JOIN movie m ON s.movie_id = m.id
-            WHERE s.id = %s
-        """, (seance_id,))
-        seance_info = cursor.fetchone()
-        return seance_info
-        
-    except Error as e:
-        print(f"Erreur lors de la récupération des informations de séance: {e}")
-        return None
-        
-    finally:
-        if connection.is_connected():
-            cursor.close()
-            connection.close()
-
 # ===== FONCTIONS POUR LES SIÈGES ET RÉSERVATIONS =====
 
 def get_seats_for_seance(seance_id):

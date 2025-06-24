@@ -8,7 +8,7 @@ from datetime import datetime, time
 # Connexion à la BDD
 DB_CONFIG = {
     "host": "82.66.24.184",
-    "port": 3305,
+    "port":3305,
     "user": "cinemacousas",
     "password": "password", 
     "database": "Cinemacousas"
@@ -23,6 +23,281 @@ def get_db_connection():
     except Error as e:
         print(f"Erreur lors de la connexion à MySQL: {e}")
         return None
+
+def initialize_database():
+    """Initialise la base de données cinéma"""
+    connection = get_db_connection()
+    
+    if connection:
+        try:
+            cursor = connection.cursor()
+            
+            # Créer la base de données si elle n'existe pas
+            cursor.execute("CREATE DATABASE IF NOT EXISTS Cinemacousas")
+            cursor.execute("USE Cinemacousas")
+            
+            # Vérifier si les tables existent déjà
+            cursor.execute("SHOW TABLES")
+            existing_tables = [table[0] for table in cursor.fetchall()]
+            
+            if len(existing_tables) == 0:
+                # Créer les tables manuellement
+                create_tables(cursor, connection)
+                # Insérer des données de test
+                insert_test_data(cursor, connection)
+                print("Base de données initialisée avec succès")
+            else:
+                # Vérifier si la structure de la table room est correcte
+                cursor.execute("DESCRIBE room")
+                room_columns = [column[0] for column in cursor.fetchall()]
+                
+                if 'nb_rows' not in room_columns or 'capacity' in room_columns:
+                    print("Structure de base de données obsolète détectée. Mise à jour...")
+                    # Supprimer les tables dans le bon ordre (contraintes de clés étrangères)
+                    drop_tables = [
+                        "DROP TABLE IF EXISTS seatreservation",
+                        "DROP TABLE IF EXISTS customer", 
+                        "DROP TABLE IF EXISTS booking",
+                        "DROP TABLE IF EXISTS seat",
+                        "DROP TABLE IF EXISTS seance",
+                        "DROP TABLE IF EXISTS movie",
+                        "DROP TABLE IF EXISTS room",
+                        "DROP TABLE IF EXISTS account",
+                        "DROP TABLE IF EXISTS ageprice"
+                    ]
+                    
+                    for drop_cmd in drop_tables:
+                        cursor.execute(drop_cmd)
+                    
+                    # Recréer les tables avec la nouvelle structure
+                    create_tables(cursor, connection)
+                    insert_test_data(cursor, connection)
+                    print("Base de données mise à jour avec succès")
+                else:
+                    print("Base de données déjà initialisée")
+            
+            return True
+                
+        except Error as e:
+            print(f"Erreur lors de l'initialisation de la base de données: {e}")
+            return False
+        
+        finally:
+            if connection.is_connected():
+                cursor.close()
+                connection.close()
+    
+    return False
+
+def create_tables(cursor, connection):
+    """Crée les tables de la base de données"""
+    
+    # Table account
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS account (
+            id INT NOT NULL AUTO_INCREMENT,
+            email VARCHAR(100) NOT NULL,
+            password_hash VARCHAR(100) NOT NULL,
+            PRIMARY KEY (id),
+            UNIQUE KEY email_UNIQUE (email)
+        ) ENGINE = InnoDB
+    """)
+    
+    # Table room
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS room (
+            id INT NOT NULL AUTO_INCREMENT,
+            name VARCHAR(45) NOT NULL,
+            nb_rows INT NULL DEFAULT NULL,
+            nb_columns INT NULL DEFAULT NULL,
+            PRIMARY KEY (id)
+        ) ENGINE = InnoDB
+    """)
+    
+    # Table movie
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS movie (
+            id INT NOT NULL AUTO_INCREMENT,
+            name VARCHAR(45) NOT NULL,
+            duration INT NOT NULL,
+            PRIMARY KEY (id)
+        ) ENGINE = InnoDB
+    """)
+    
+    # Table seance
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS seance (
+            id INT NOT NULL AUTO_INCREMENT,
+            date DATETIME NOT NULL,
+            starttime TIME NOT NULL,
+            baseprice INT NOT NULL,
+            room_id INT NOT NULL,
+            movie_id INT NOT NULL,
+            PRIMARY KEY (id),
+            KEY fk_seance_room1_idx (room_id),
+            KEY fk_seance_movie1_idx (movie_id),
+            CONSTRAINT fk_seance_room1 FOREIGN KEY (room_id) REFERENCES room (id) ON DELETE RESTRICT ON UPDATE CASCADE,
+            CONSTRAINT fk_seance_movie1 FOREIGN KEY (movie_id) REFERENCES movie (id) ON DELETE RESTRICT ON UPDATE CASCADE
+        ) ENGINE = InnoDB
+    """)
+    
+    # Table booking
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS booking (
+            id INT NOT NULL AUTO_INCREMENT,
+            price DECIMAL(10,2) NULL DEFAULT NULL,
+            account_id INT NOT NULL,
+            seance_id INT NOT NULL,
+            PRIMARY KEY (id),
+            KEY fk_booking_account1_idx (account_id),
+            KEY fk_booking_seance1_idx (seance_id),
+            CONSTRAINT fk_booking_account1 FOREIGN KEY (account_id) REFERENCES account (id) ON DELETE RESTRICT ON UPDATE CASCADE,
+            CONSTRAINT fk_booking_seance1 FOREIGN KEY (seance_id) REFERENCES seance (id) ON DELETE CASCADE ON UPDATE CASCADE
+        ) ENGINE = InnoDB
+    """)
+    
+    # Table customer
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS customer (
+            id INT NOT NULL AUTO_INCREMENT,
+            firstname VARCHAR(45) NOT NULL,
+            lastname VARCHAR(100) NOT NULL,
+            age INT NOT NULL,
+            pmr TINYINT NULL DEFAULT NULL,
+            booking_id INT NOT NULL,
+            PRIMARY KEY (id),
+            KEY fk_customer_booking1_idx (booking_id),
+            CONSTRAINT fk_customer_booking1 FOREIGN KEY (booking_id) REFERENCES booking (id) ON DELETE CASCADE ON UPDATE CASCADE
+        ) ENGINE = InnoDB
+    """)
+    
+    # Table seat
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS seat (
+            id INT NOT NULL AUTO_INCREMENT,
+            type ENUM('normal', 'pmr', 'stair', 'empty') NULL DEFAULT 'normal',
+            room_id INT NOT NULL,
+            seat_letter VARCHAR(45) NOT NULL,
+            seat_number INT NOT NULL,
+            PRIMARY KEY (id),
+            UNIQUE KEY unique_seat_per_room (seat_letter, seat_number, room_id),
+            KEY fk_seat_room1_idx (room_id),
+            CONSTRAINT fk_seat_room1 FOREIGN KEY (room_id) REFERENCES room (id) ON DELETE RESTRICT ON UPDATE CASCADE
+        ) ENGINE = InnoDB
+    """)
+    
+    # Table seatreservation
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS seatreservation (
+            customer_id INT NOT NULL,
+            seance_id INT NOT NULL,
+            seat_id INT NOT NULL,
+            PRIMARY KEY (seance_id, seat_id),
+            KEY fk_seatreservation_customer1_idx (customer_id),
+            KEY fk_seatreservation_seat1_idx (seat_id),
+            CONSTRAINT fk_seatreservation_customer1 FOREIGN KEY (customer_id) REFERENCES customer (id) ON DELETE CASCADE ON UPDATE CASCADE,
+            CONSTRAINT fk_seatreservation_seance1 FOREIGN KEY (seance_id) REFERENCES seance (id) ON DELETE RESTRICT ON UPDATE CASCADE,
+            CONSTRAINT fk_seatreservation_seat1 FOREIGN KEY (seat_id) REFERENCES seat (id) ON DELETE RESTRICT ON UPDATE CASCADE
+        ) ENGINE = InnoDB
+    """)
+    
+    # Table ageprice
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS ageprice (
+            id INT NOT NULL AUTO_INCREMENT,
+            name VARCHAR(45) NOT NULL,
+            agemax INT NOT NULL,
+            agemin INT NOT NULL,
+            factor DECIMAL(4,2) NOT NULL,
+            PRIMARY KEY (id)
+        ) ENGINE = InnoDB
+    """)
+    
+    connection.commit()
+
+def insert_test_data(cursor, connection):
+    """Insère des données de test dans la base de données"""
+    try:
+        # Vérifier si des données existent déjà
+        cursor.execute("SELECT COUNT(*) FROM movie")
+        if cursor.fetchone()[0] > 0:
+            return  # Des données existent déjà
+            
+        # Insérer des comptes de test
+        cursor.execute("""
+            INSERT INTO account (email, password_hash) VALUES 
+            ('admin@cinema.com', %s),
+            ('user@cinema.com', %s)
+        """, (hash_password('admin123'), hash_password('user123')))
+        
+        # Insérer des salles
+        cursor.execute("""
+            INSERT INTO room (name, nb_rows, nb_columns) VALUES 
+            ('Salle 1', 6, 10),
+            ('Salle 2', 8, 10),
+            ('Salle VIP', 4, 10)
+        """)
+        
+        # Insérer des films
+        cursor.execute("""
+            INSERT INTO movie (name, duration) VALUES 
+            ('Dune: Part Two', 155),
+            ('The Creator', 133),
+            ('Oppenheimer', 180)
+        """)
+        
+        # Insérer des sièges pour chaque salle
+        for room_id in range(1, 4):
+            nb_rows = 6 if room_id == 1 else (8 if room_id == 2 else 4)
+            nb_columns = 10
+            
+            for row in range(1, nb_rows + 1):
+                for seat_num in range(1, nb_columns + 1):
+                    # Tous les sièges sont normaux par défaut
+                    seat_type = 'normal'
+                    seat_letter = chr(64 + row)  # A, B, C, etc.
+                    cursor.execute("""
+                        INSERT INTO seat (type, room_id, seat_letter, seat_number) 
+                        VALUES (%s, %s, %s, %s)
+                    """, (seat_type, room_id, seat_letter, seat_num))
+        
+        # Insérer des séances (plusieurs dates et horaires)
+        cursor.execute("""
+            INSERT INTO seance (date, starttime, baseprice, room_id, movie_id) VALUES 
+            ('2025-06-24', '18:00:00', 1200, 1, 1),
+            ('2025-06-24', '20:00:00', 1200, 2, 2),
+            ('2025-06-24', '22:00:00', 1500, 3, 3),
+            ('2025-06-25', '18:00:00', 1200, 1, 2),
+            ('2025-06-25', '20:00:00', 1200, 2, 3),
+            ('2025-06-25', '21:00:00', 1200, 3, 1),
+            ('2025-06-26', '19:00:00', 1200, 1, 1),
+            ('2025-06-26', '21:30:00', 1200, 2, 1),
+            ('2025-06-27', '18:30:00', 1200, 1, 3),
+            ('2025-06-27', '20:30:00', 1200, 2, 2),
+            ('2025-06-28', '17:00:00', 1000, 1, 2),
+            ('2025-06-28', '19:30:00', 1200, 2, 1),
+            ('2025-06-28', '22:00:00', 1500, 3, 3),
+            ('2025-06-29', '16:00:00', 1000, 1, 1),
+            ('2025-06-29', '18:30:00', 1200, 2, 2),
+            ('2025-06-29', '21:00:00', 1200, 3, 3),
+            ('2025-06-30', '19:00:00', 1200, 1, 2),
+            ('2025-06-30', '21:30:00', 1200, 2, 3),
+            ('2025-07-01', '20:00:00', 1200, 1, 1)
+        """)
+        
+        # Insérer des tarifs par âge
+        cursor.execute("""
+            INSERT INTO ageprice (name, agemax, agemin, factor) VALUES 
+            ('Enfant', 12, 0, 0.70),
+            ('Adulte', 64, 13, 1.00),
+            ('Senior', 120, 65, 0.80)
+        """)
+        
+        connection.commit()
+        print("Données de test insérées avec succès")
+        
+    except Error as e:
+        print(f"Erreur lors de l'insertion des données de test: {e}")
 
 def hash_password(password):
     """Hash un mot de passe avec SHA-256"""
@@ -160,7 +435,7 @@ def get_all_rooms():
             connection.close()
 
 def add_room(name, nb_rows, nb_columns):
-    """Ajoute une nouvelle salle et crée automatiquement les sièges"""
+    """Ajoute une nouvelle salle"""
     connection = get_db_connection()
     
     if connection is None:
@@ -169,26 +444,15 @@ def add_room(name, nb_rows, nb_columns):
     try:
         cursor = connection.cursor()
         
-        # Ajouter la salle
         cursor.execute("INSERT INTO room (name, nb_rows, nb_columns) VALUES (%s, %s, %s)", 
                       (name, nb_rows, nb_columns))
         room_id = cursor.lastrowid
-        
-        # Créer les sièges pour la nouvelle salle
-        seats_created = 0
-        for row_number in range(1, nb_rows + 1):
-            row_letter = chr(64 + row_number)  # A, B, C, etc.
-            
-            for seat_column in range(1, nb_columns + 1):
-                cursor.execute("""
-                    INSERT INTO seat (type, room_id, seat_row, seat_column) 
-                    VALUES ('normal', %s, %s, %s)
-                """, (room_id, row_letter, seat_column))
-                seats_created += 1
-        
         connection.commit()
         
-        return True, f"Salle '{name}' ajoutée avec succès ({seats_created} sièges créés)"
+        # Créer les sièges pour la nouvelle salle
+        create_seats_for_room(cursor, connection, room_id, nb_rows, nb_columns)
+        
+        return True, f"Salle '{name}' ajoutée avec succès"
         
     except Error as e:
         return False, f"Erreur lors de l'ajout de la salle: {e}"
@@ -197,6 +461,39 @@ def add_room(name, nb_rows, nb_columns):
         if connection.is_connected():
             cursor.close()
             connection.close()
+
+def create_seats_for_room(cursor, connection, room_id, nb_rows, nb_columns):
+    """Crée les sièges pour une salle donnée selon les dimensions spécifiées"""
+    
+    print(f"Création de {nb_rows * nb_columns} sièges ({nb_rows} rangées x {nb_columns} colonnes) pour la salle {room_id}")
+    
+    seats_created = 0
+    
+    for row_number in range(1, nb_rows + 1):
+        # Convertir le numéro de rangée en lettre (1=A, 2=B, 3=C, etc.)
+        row_letter = chr(64 + row_number)  # 65 = 'A', 66 = 'B', etc.
+        
+        print(f"  Rangée {row_letter}: {nb_columns} sièges")
+        
+        for seat_number in range(1, nb_columns + 1):
+            # Tous les sièges sont normaux par défaut
+            seat_type = 'normal'
+            
+            # Insérer le siège dans la base de données
+            cursor.execute("""
+                INSERT INTO seat (type, room_id, seat_letter, seat_number) 
+                VALUES (%s, %s, %s, %s)
+            """, (seat_type, room_id, row_letter, seat_number))
+            
+            seats_created += 1
+            
+            # Debug : afficher chaque siège créé
+            print(f"    Siège {row_letter}{seat_number} (NORMAL)")
+    
+    connection.commit()
+    print(f"Total de {seats_created} sièges créés avec succès")
+    
+    return seats_created
 
 # ===== FONCTIONS POUR LA GESTION DES SIÈGES =====
 
@@ -277,7 +574,7 @@ def get_room_seats_grid(room_id):
             cursor.close()
             connection.close()
 
-def get_seat_by_position(room_id, seat_row, seat_column):
+def get_seat_by_position(room_id, seat_letter, seat_number):
     """Récupère un siège par sa position"""
     connection = get_db_connection()
     
@@ -288,8 +585,8 @@ def get_seat_by_position(room_id, seat_row, seat_column):
         cursor = connection.cursor(dictionary=True)
         cursor.execute("""
             SELECT * FROM seat 
-            WHERE room_id = %s AND seat_row = %s AND seat_column = %s
-        """, (room_id, seat_row, seat_column))
+            WHERE room_id = %s AND seat_letter = %s AND seat_number = %s
+        """, (room_id, seat_letter, seat_number))
         
         return cursor.fetchone()
         
@@ -417,34 +714,6 @@ def add_seance(date, starttime, baseprice, room_id, movie_id):
             cursor.close()
             connection.close()
 
-def get_seance_info(seance_id):
-    """Récupère les informations d'une séance avec les détails de la salle"""
-    connection = get_db_connection()
-    
-    if connection is None:
-        return None
-        
-    try:
-        cursor = connection.cursor(dictionary=True)
-        cursor.execute("""
-            SELECT s.*, r.name as room_name, r.nb_rows, r.nb_columns, m.name as movie_name
-            FROM seance s
-            JOIN room r ON s.room_id = r.id
-            JOIN movie m ON s.movie_id = m.id
-            WHERE s.id = %s
-        """, (seance_id,))
-        seance_info = cursor.fetchone()
-        return seance_info
-        
-    except Error as e:
-        print(f"Erreur lors de la récupération des informations de séance: {e}")
-        return None
-        
-    finally:
-        if connection.is_connected():
-            cursor.close()
-            connection.close()
-
 # ===== FONCTIONS POUR LES SIÈGES ET RÉSERVATIONS =====
 
 def get_seats_for_seance(seance_id):
@@ -463,7 +732,7 @@ def get_seats_for_seance(seance_id):
             JOIN seance se ON s.room_id = se.room_id
             LEFT JOIN seatreservation sr ON s.id = sr.seat_id AND sr.seance_id = %s
             WHERE se.id = %s
-            ORDER BY s.seat_row, s.seat_column
+            ORDER BY s.seat_letter, s.seat_number
         """, (seance_id, seance_id))
         seats = cursor.fetchall()
         return seats
@@ -549,7 +818,53 @@ def calculate_total_price(cursor, seance_id, spectators_data):
     
     return int(total)
 
-# ===== FONCTIONS UTILITAIRES =====
+def force_reset_database():
+    """Force la réinitialisation complète de la base de données"""
+    connection = get_db_connection()
+    
+    if connection:
+        try:
+            cursor = connection.cursor()
+            
+            # Créer la base de données si elle n'existe pas
+            cursor.execute("CREATE DATABASE IF NOT EXISTS Cinemacousas")
+            cursor.execute("USE Cinemacousas")
+            
+            print("Suppression de toutes les tables...")
+            # Supprimer les tables dans le bon ordre (contraintes de clés étrangères)
+            drop_tables = [
+                "DROP TABLE IF EXISTS seatreservation",
+                "DROP TABLE IF EXISTS customer", 
+                "DROP TABLE IF EXISTS booking",
+                "DROP TABLE IF EXISTS seat",
+                "DROP TABLE IF EXISTS seance",
+                "DROP TABLE IF EXISTS movie",
+                "DROP TABLE IF EXISTS room",
+                "DROP TABLE IF EXISTS account",
+                "DROP TABLE IF EXISTS ageprice"
+            ]
+            
+            for drop_cmd in drop_tables:
+                cursor.execute(drop_cmd)
+            
+            print("Recréation des tables...")
+            # Recréer les tables avec la nouvelle structure
+            create_tables(cursor, connection)
+            insert_test_data(cursor, connection)
+            print("Base de données réinitialisée avec succès")
+            
+            return True
+                
+        except Error as e:
+            print(f"Erreur lors de la réinitialisation de la base de données: {e}")
+            return False
+        
+        finally:
+            if connection.is_connected():
+                cursor.close()
+                connection.close()
+    
+    return False
 
 def get_room_layout(room_id):
     """Récupère la disposition des sièges d'une salle"""
@@ -561,10 +876,10 @@ def get_room_layout(room_id):
     try:
         cursor = connection.cursor(dictionary=True)
         cursor.execute("""
-            SELECT seat_row, seat_column, type
+            SELECT seat_letter, seat_number, type
             FROM seat 
             WHERE room_id = %s 
-            ORDER BY seat_row, seat_column
+            ORDER BY seat_letter, seat_number
         """, (room_id,))
         seats = cursor.fetchall()
         
@@ -574,11 +889,11 @@ def get_room_layout(room_id):
         # Organiser les sièges par rangée
         layout = {}
         for seat in seats:
-            row = seat['seat_row']
+            row = seat['seat_letter']
             if row not in layout:
                 layout[row] = []
             layout[row].append({
-                'number': seat['seat_column'],
+                'number': seat['seat_number'],
                 'type': seat['type']
             })
         

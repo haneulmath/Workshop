@@ -98,25 +98,37 @@ def get_seances_today():
 
 @app.route('/api/seance/<int:seance_id>/seats')
 def get_seance_seats(seance_id):
-    """API pour récupérer les sièges d'une séance"""
+    """API pour récupérer les sièges d'une séance avec la même structure que l'admin"""
     seats = modele.get_seats_for_seance(seance_id)
     if seats is None:
         return jsonify({'error': 'Erreur lors de la récupération des sièges'}), 500
     
-    # Formater les sièges pour le frontend
-    formatted_seats = []
-    for seat in seats:
-        formatted_seats.append({
-            'id': seat['id'],
-            'row': seat['seat_row'],
-            'column': seat['seat_column'],
-            'number': seat['seat_column'],  # Pour compatibilité avec le frontend
-            'type': seat['type'],  # nouveau champ: normal, pmr, stair, empty
-            'occupied': bool(seat['occupied']),
-            'label': f"{seat['seat_row']}{seat['seat_column']}"  # A1, A2, etc.
-        })
+    # Récupérer les informations de la salle pour cette séance
+    seance_info = modele.get_seance_info(seance_id)
+    if seance_info is None:
+        return jsonify({'error': 'Séance non trouvée'}), 404
     
-    return jsonify(formatted_seats)
+    # Organiser les sièges en grille comme l'interface d'administration
+    grid = {}
+    for seat in seats:
+        row = seat['seat_row']
+        if row not in grid:
+            grid[row] = {}
+        grid[row][seat['seat_column']] = {
+            'id': seat['id'],
+            'type': seat['type'],
+            'occupied': bool(seat['occupied'])
+        }
+    
+    return jsonify({
+        'room': {
+            'id': seance_info['room_id'],
+            'name': seance_info['room_name'],
+            'nb_rows': seance_info['nb_rows'],
+            'nb_columns': seance_info['nb_columns']
+        },
+        'grid': grid
+    })
 
 @app.route('/api/booking', methods=['POST'])
 def create_booking():
@@ -238,9 +250,5 @@ def add_seance():
 
 # Point d'entrée du programme
 if __name__ == "__main__":
-    # Initialisation de la base de données au démarrage
-    print("Initialisation de la base de données cinema...")
-    modele.initialize_database()
-    
-    print("Démarrage du serveur Flask sur le port 5001...")
+    print("Démarrage du serveur Flask sur le port 5002...")
     app.run(debug=True, port=5002)

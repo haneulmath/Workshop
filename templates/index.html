@@ -39,22 +39,42 @@
         }
         .seat-grid {
             display: grid;
-            grid-template-columns: repeat(10, 1fr);
-            gap: 10px;
-            perspective: 500px;
+            gap: 5px;
+            padding: 20px;
+            border: 2px solid #dee2e6;
+            border-radius: 10px;
+            background-color: #f8f9fa;
+            max-width: fit-content;
+            margin: 0 auto;
+        }
+        .row-label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: #495057;
         }
         .seat {
-            background-color: #6c757d;
-            height: 30px;
+            width: 35px;
+            height: 35px;
+            border: 2px solid #6c757d;
             border-radius: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: bold;
             cursor: pointer;
-            text-align: center;
-            line-height: 30px;
-            font-size: 12px;
+            transition: all 0.2s ease;
             color: white;
+        }
+        .seat:hover {
+            transform: scale(1.1);
+            border-width: 3px;
         }
         .seat.normal {
             background-color: #6c757d;
+            color: white;
         }
         .seat.pmr {
             background-color: #ffc107;
@@ -62,11 +82,13 @@
         }
         .seat.stair {
             background-color: #17a2b8;
+            color: white;
             cursor: not-allowed;
         }
         .seat.empty {
             background-color: transparent;
-            border: 1px dashed #ccc;
+            border: 2px dashed #6c757d;
+            color: #6c757d;
             cursor: not-allowed;
         }
         .seat.selected {
@@ -419,55 +441,70 @@
             async function loadSeats(seanceId) {
                 try {
                     const response = await fetch(`/api/seance/${seanceId}/seats`);
-                    const seats = await response.json();
+                    const data = await response.json();
                     
-                    generateSeatGrid(seats);
+                    if (data.error) {
+                        alert('Erreur: ' + data.error);
+                        return;
+                    }
+                    
+                    generateSeatGrid(data);
                 } catch (error) {
                     console.error('Erreur lors du chargement des sièges:', error);
                     alert('Erreur lors du chargement des sièges');
                 }
             }
 
-            function generateSeatGrid(seats) {
+            function generateSeatGrid(data) {
+                const { room, grid } = data;
                 seatGrid.innerHTML = '';
                 
-                // Organiser les sièges par rangée
-                const seatsByRow = {};
-                seats.forEach(seat => {
-                    if (!seatsByRow[seat.row]) {
-                        seatsByRow[seat.row] = [];
-                    }
-                    seatsByRow[seat.row].push(seat);
-                });
-
-                // Créer la grille
-                Object.keys(seatsByRow).sort().forEach(rowLetter => {
-                    const rowSeats = seatsByRow[rowLetter].sort((a, b) => a.number - b.number);
+                // Définir le CSS Grid basé sur les dimensions de la salle
+                seatGrid.style.gridTemplateColumns = `auto repeat(${room.nb_columns}, 1fr)`;
+                
+                // Générer les rangées (A, B, C, ...)
+                for (let rowIndex = 1; rowIndex <= room.nb_rows; rowIndex++) {
+                    const rowLetter = String.fromCharCode(64 + rowIndex);
                     
-                    rowSeats.forEach(seat => {
+                    // Label de la rangée
+                    const rowLabel = document.createElement('div');
+                    rowLabel.className = 'row-label';
+                    rowLabel.textContent = rowLetter;
+                    rowLabel.style.fontWeight = 'bold';
+                    rowLabel.style.textAlign = 'center';
+                    rowLabel.style.padding = '5px';
+                    seatGrid.appendChild(rowLabel);
+                    
+                    // Sièges de la rangée
+                    for (let colIndex = 1; colIndex <= room.nb_columns; colIndex++) {
                         const seatElement = document.createElement('div');
                         seatElement.classList.add('seat');
-                        seatElement.textContent = seat.label;
-                        seatElement.dataset.id = seat.id;
-                        seatElement.dataset.label = seat.label;
-                        seatElement.dataset.type = seat.type;
-
-                        // Ajouter la classe CSS selon le type de siège
-                        seatElement.classList.add(seat.type);
-
-                        // Gérer les états
-                        if (seat.occupied) {
-                            seatElement.classList.add('occupied');
+                        seatElement.textContent = colIndex;
+                        
+                        // Récupérer les données du siège
+                        const seatData = grid[rowLetter] && grid[rowLetter][colIndex];
+                        if (seatData) {
+                            seatElement.dataset.id = seatData.id;
+                            seatElement.dataset.label = `${rowLetter}${colIndex}`;
+                            seatElement.dataset.type = seatData.type;
+                            
+                            // Ajouter la classe CSS selon le type de siège
+                            seatElement.classList.add(seatData.type);
+                            
+                            // Gérer les états
+                            if (seatData.occupied) {
+                                seatElement.classList.add('occupied');
+                            }
+                            
+                            // Les escaliers et espaces vides ne sont pas cliquables
+                            if (seatData.type === 'stair' || seatData.type === 'empty') {
+                                seatElement.style.pointerEvents = 'none';
+                            }
                         }
-
-                        // Les escaliers et espaces vides ne sont pas cliquables
-                        if (seat.type === 'stair' || seat.type === 'empty') {
-                            seatElement.style.pointerEvents = 'none';
-                        }
-
+                        
                         seatGrid.appendChild(seatElement);
-                    });
-                });
+                    }
+                }
             }
 
             seatGrid.addEventListener('click', function(event) {
