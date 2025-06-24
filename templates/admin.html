@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Administration - Cinema Palace</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .admin-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem 0;
+            margin-bottom: 2rem;
+        }
+        .card {
+            border: none;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+            margin-bottom: 1.5rem;
+        }
+        .card-header {
+            background-color: #495057;
+            color: white;
+            font-weight: bold;
+        }
+        .table th {
+            background-color: #6c757d;
+            color: white;
+        }
+        .btn-add {
+            background: linear-gradient(45deg, #28a745, #20c997);
+            border: none;
+            color: white;
+        }
+        .btn-add:hover {
+            background: linear-gradient(45deg, #218838, #1aa179);
+            color: white;
+        }
+
+        .seats-admin-grid {
+            display: inline-block;
+            border: 2px solid #dee2e6;
+            padding: 20px;
+            border-radius: 10px;
+            background-color: #f8f9fa;
+        }
+        
+        .seats-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        
+        .row-label {
+            width: 30px;
+            text-align: center;
+            font-weight: bold;
+            margin-right: 10px;
+            color: #495057;
+        }
+        
+        .seat-admin {
+            width: 35px;
+            height: 35px;
+            margin: 2px;
+            border: 2px solid #6c757d;
+            border-radius: 5px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .seat-admin:hover {
+            transform: scale(1.1);
+            border-width: 3px;
+        }
+        
+        .seat-admin.normal {
+            background-color: #6c757d;
+            color: white;
+        }
+        
+        .seat-admin.pmr {
+            background-color: #ffc107;
+            color: #000;
+        }
+        
+        .seat-admin.stair {
+            background-color: #17a2b8;
+            color: white;
+        }
+        
+        .seat-admin.empty {
+            background-color: transparent;
+            border-style: dashed;
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <header class="admin-header">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col">
+                    <h1 class="mb-0">🎬 Administration Cinema Palace</h1>
+                    <p class="mb-0">Gestion des films, salles et séances</p>
+                </div>
+                <div class="col-auto">
+                    <a href="/" class="btn btn-outline-light">
+                        <i class="fas fa-home"></i> Retour à l'accueil
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Messages Flash -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="row">
+            <!-- Gestion des Films -->
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">🎭 Gestion des Films</h5>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST" action="/admin/movie" class="mb-3">
+                            <div class="row g-2">
+                                <div class="col-md-6">
+                                    <input type="text" class="form-control" name="name" placeholder="Nom du film" required>
+                                </div>
+                                <div class="col-md-4">
+                                    <input type="number" class="form-control" name="duration" placeholder="Durée (min)" required>
+                                </div>
+                                <div class="col-md-2">
+                                    <button type="submit" class="btn btn-add w-100">+</button>
+                                </div>
+                            </div>
+                        </form>
+                        
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Nom</th>
+                                        <th>Durée</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% if movies %}
+                                        {% for movie in movies %}
+                                        <tr>
+                                            <td>{{ movie.id }}</td>
+                                            <td>{{ movie.name }}</td>
+                                            <td>{{ movie.duration }} min</td>
+                                        </tr>
+                                        {% endfor %}
+                                    {% else %}
+                                        <tr>
+                                            <td colspan="3" class="text-center text-muted">Aucun film</td>
+                                        </tr>
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gestion des Salles -->
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">🏛️ Gestion des Salles</h5>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST" action="/admin/room" class="mb-3">
+                            <div class="row g-2">
+                                <div class="col-md-4">
+                                    <input type="text" class="form-control" name="name" placeholder="Nom de la salle" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <input type="number" class="form-control" name="rows" placeholder="Rangées" min="1" max="20" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <input type="number" class="form-control" name="columns" placeholder="Colonnes" min="1" max="20" required>
+                                </div>
+                                <div class="col-md-2">
+                                    <button type="submit" class="btn btn-add w-100">+</button>
+                                </div>
+                            </div>
+                        </form>
+                        
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Nom</th>
+                                        <th>Rangées</th>
+                                        <th>Colonnes</th>
+                                        <th>Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% if rooms %}
+                                        {% for room in rooms %}
+                                        <tr>
+                                            <td>{{ room.id }}</td>
+                                            <td>{{ room.name }}</td>
+                                            <td>{{ room.nb_rows }}</td>
+                                            <td>{{ room.nb_columns }}</td>
+                                            <td>{{ room.nb_rows * room.nb_columns }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    {% else %}
+                                        <tr>
+                                            <td colspan="5" class="text-center text-muted">Aucune salle</td>
+                                        </tr>
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gestion des Séances -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">🎞️ Gestion des Séances</h5>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST" action="/admin/seance" class="mb-4">
+                            <div class="row g-3">
+                                <div class="col-md-2">
+                                    <label class="form-label">Date</label>
+                                    <input type="date" class="form-control" name="date" required>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">Heure</label>
+                                    <input type="time" class="form-control" name="starttime" required>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">Prix (€)</label>
+                                    <input type="number" step="0.01" class="form-control" name="baseprice" placeholder="12.50" required>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">Salle</label>
+                                    <select class="form-select" name="room_id" required>
+                                        <option value="">Choisir...</option>
+                                        {% if rooms %}
+                                            {% for room in rooms %}
+                                            <option value="{{ room.id }}">{{ room.name }}</option>
+                                            {% endfor %}
+                                        {% endif %}
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Film</label>
+                                    <select class="form-select" name="movie_id" required>
+                                        <option value="">Choisir...</option>
+                                        {% if movies %}
+                                            {% for movie in movies %}
+                                            <option value="{{ movie.id }}">{{ movie.name }}</option>
+                                            {% endfor %}
+                                        {% endif %}
+                                    </select>
+                                </div>
+                                <div class="col-md-1">
+                                    <label class="form-label">&nbsp;</label>
+                                    <button type="submit" class="btn btn-add w-100">Ajouter</button>
+                                </div>
+                            </div>
+                        </form>
+                        
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Date</th>
+                                        <th>Heure</th>
+                                        <th>Film</th>
+                                        <th>Salle</th>
+                                        <th>Prix</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% if seances %}
+                                        {% for seance in seances %}
+                                        <tr>
+                                            <td>{{ seance.id }}</td>
+                                            <td>{{ seance.date.strftime('%d/%m/%Y') if seance.date else '' }}</td>
+                                            <td>{{ seance.starttime }}</td>
+                                            <td>{{ seance.movie_name }}</td>
+                                            <td>{{ seance.room_name }}</td>
+                                            <td>{{ "%.2f"|format(seance.baseprice / 100) }}€</td>
+                                        </tr>
+                                        {% endfor %}
+                                    {% else %}
+                                        <tr>
+                                            <td colspan="6" class="text-center text-muted">Aucune séance</td>
+                                        </tr>
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gestion des Sièges -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">🪑 Gestion des Sièges</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label for="room-select" class="form-label">Sélectionner une salle :</label>
+                                <select id="room-select" class="form-select">
+                                    <option value="">Aucune sélection</option>
+                                    {% if rooms %}
+                                        {% for room in rooms %}
+                                        <option value="{{ room.id }}" data-rows="{{ room.nb_rows }}" data-columns="{{ room.nb_columns }}">
+                                            {{ room.name }} ({{ room.nb_rows }}x{{ room.nb_columns }})
+                                        </option>
+                                        {% endfor %}
+                                    {% endif %}
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div id="seats-grid-container" style="display: none;">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6 id="selected-room-title" class="mb-0"></h6>
+                                <div class="d-flex gap-3">
+                                    <span><span class="badge bg-secondary">Normal</span></span>
+                                    <span><span class="badge bg-warning text-dark">PMR</span></span>
+                                    <span><span class="badge bg-info">Escalier</span></span>
+                                    <span><span class="badge bg-light text-dark border">Vide</span></span>
+                                </div>
+                            </div>
+                            
+                            <div class="text-center mb-3">
+                                <div class="bg-dark text-white py-2 px-4 rounded">ÉCRAN</div>
+                            </div>
+                            
+                            <div id="seats-grid" class="seats-admin-grid">
+                                <!-- La grille sera générée dynamiquement -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const roomSelect = document.getElementById('room-select');
+            const seatsGridContainer = document.getElementById('seats-grid-container');
+            const selectedRoomTitle = document.getElementById('selected-room-title');
+            const seatsGrid = document.getElementById('seats-grid');
+            
+            roomSelect.addEventListener('change', function() {
+                const roomId = this.value;
+                if (!roomId) {
+                    seatsGridContainer.style.display = 'none';
+                    return;
+                }
+                
+                const selectedOption = this.options[this.selectedIndex];
+                const roomName = selectedOption.text;
+                selectedRoomTitle.textContent = `Configuration des sièges - ${roomName}`;
+                
+                loadRoomSeats(roomId);
+            });
+            
+            async function loadRoomSeats(roomId) {
+                try {
+                    const response = await fetch(`/api/room/${roomId}/seats`);
+                    const data = await response.json();
+                    
+                    if (data.error) {
+                        alert('Erreur: ' + data.error);
+                        return;
+                    }
+                    
+                    generateSeatsGrid(data);
+                    seatsGridContainer.style.display = 'block';
+                } catch (error) {
+                    console.error('Erreur:', error);
+                    alert('Erreur lors du chargement des sièges');
+                }
+            }
+            
+            function generateSeatsGrid(data) {
+                const { room, grid } = data;
+                seatsGrid.innerHTML = '';
+                
+                // Générer les rangées (A, B, C, ...)
+                for (let rowIndex = 1; rowIndex <= room.rows; rowIndex++) {
+                    const rowLetter = String.fromCharCode(64 + rowIndex);
+                    const rowDiv = document.createElement('div');
+                    rowDiv.className = 'seats-row';
+                    
+                    // Label de la rangée
+                    const rowLabel = document.createElement('div');
+                    rowLabel.className = 'row-label';
+                    rowLabel.textContent = rowLetter;
+                    rowDiv.appendChild(rowLabel);
+                    
+                    // Sièges de la rangée
+                    for (let colIndex = 1; colIndex <= room.columns; colIndex++) {
+                        const seatDiv = document.createElement('div');
+                        seatDiv.className = 'seat-admin';
+                        seatDiv.textContent = colIndex;
+                        
+                        // Récupérer les données du siège
+                        const seatData = grid[rowLetter] && grid[rowLetter][colIndex];
+                        if (seatData) {
+                            seatDiv.classList.add(seatData.type);
+                            seatDiv.dataset.seatId = seatData.id;
+                            seatDiv.dataset.currentType = seatData.type;
+                            
+                            // Gestionnaire de clic pour changer le type
+                            seatDiv.addEventListener('click', function() {
+                                changeSeatType(this);
+                            });
+                        }
+                        
+                        rowDiv.appendChild(seatDiv);
+                    }
+                    
+                    seatsGrid.appendChild(rowDiv);
+                }
+            }
+            
+            function changeSeatType(seatElement) {
+                const currentType = seatElement.dataset.currentType;
+                const types = ['normal', 'pmr', 'stair', 'empty'];
+                const currentIndex = types.indexOf(currentType);
+                const nextIndex = (currentIndex + 1) % types.length;
+                const newType = types[nextIndex];
+                
+                updateSeatType(seatElement.dataset.seatId, newType, seatElement);
+            }
+            
+            async function updateSeatType(seatId, newType, seatElement) {
+                try {
+                    const response = await fetch(`/api/seat/${seatId}/type`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ type: newType })
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        // Mettre à jour l'apparence du siège
+                        seatElement.className = `seat-admin ${newType}`;
+                        seatElement.dataset.currentType = newType;
+                    } else {
+                        alert('Erreur: ' + result.message);
+                    }
+                } catch (error) {
+                    console.error('Erreur:', error);
+                    alert('Erreur lors de la mise à jour');
+                }
+            }
+        });
+    </script>
+</body>
+</html>
