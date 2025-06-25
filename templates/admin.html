@@ -703,8 +703,16 @@
                                 <label class="form-label">Nom</label>
                                 <input type="text" class="form-control" name="name" value="{{ room.name }}" required>
                             </div>
-                            <div class="alert alert-info">
-                                <small>Note: Les dimensions de la salle ({{ room.nb_rows }} rangées × {{ room.nb_columns }} colonnes) ne peuvent pas être modifiées pour préserver l'intégrité des sièges existants.</small>
+                            <div class="mb-3">
+                                <label class="form-label">Nombre de rangées</label>
+                                <input type="number" class="form-control" name="rows" value="{{ room.nb_rows }}" min="1" max="26" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Nombre de colonnes</label>
+                                <input type="number" class="form-control" name="columns" value="{{ room.nb_columns }}" min="1" max="50" required>
+                            </div>
+                            <div class="alert alert-warning">
+                                <small><strong>Attention:</strong> Modifier les dimensions (rangées/colonnes) supprimera tous les sièges existants et les recréera. Cette opération n'est possible que si la salle n'est utilisée dans aucune séance.</small>
                             </div>
                         </div>
                         <div class="modal-footer">

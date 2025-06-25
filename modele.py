@@ -307,7 +307,7 @@ def add_room(name, nb_rows, nb_columns):
             connection.close()
 
 def update_room(room_id, name, nb_rows, nb_columns):
-    """Met à jour une salle (nom uniquement pour éviter les conflits avec les sièges existants)"""
+    """Met à jour une salle - permet de changer les dimensions seulement si la salle n'est pas utilisée"""
     connection = get_db_connection()
     
     if connection is None:
@@ -316,14 +316,53 @@ def update_room(room_id, name, nb_rows, nb_columns):
     try:
         cursor = connection.cursor()
         
-        # Mettre à jour uniquement le nom pour éviter les problèmes avec les sièges existants
-        cursor.execute("UPDATE room SET name = %s WHERE id = %s", (name, room_id))
-        connection.commit()
+        # Récupérer les dimensions actuelles de la salle
+        cursor.execute("SELECT name, nb_rows, nb_columns FROM room WHERE id = %s", (room_id,))
+        current_room = cursor.fetchone()
         
-        if cursor.rowcount > 0:
-            return True, f"Salle '{name}' mise à jour avec succès"
-        else:
+        if not current_room:
             return False, "Salle non trouvée"
+        
+        current_name, current_rows, current_columns = current_room
+        
+        # Vérifier si les dimensions changent
+        dimensions_changed = (nb_rows != current_rows or nb_columns != current_columns)
+        
+        if dimensions_changed:
+            # Vérifier si la salle est utilisée dans des séances
+            if is_room_used_in_showings(room_id):
+                return False, "Impossible de modifier les dimensions de cette salle car elle est utilisée dans des séances. Supprimez d'abord toutes les séances associées."
+            
+            # Si les dimensions changent, il faut recréer tous les sièges
+            # Supprimer tous les sièges existants
+            cursor.execute("DELETE FROM seat WHERE room_id = %s", (room_id,))
+            
+            # Mettre à jour la salle avec les nouvelles dimensions
+            cursor.execute("UPDATE room SET name = %s, nb_rows = %s, nb_columns = %s WHERE id = %s", 
+                         (name, nb_rows, nb_columns, room_id))
+            
+            # Recréer les sièges avec les nouvelles dimensions
+            seats_created = 0
+            for row_num in range(1, nb_rows + 1):
+                row_letter = chr(ord('A') + row_num - 1)
+                for seat_column in range(1, nb_columns + 1):
+                    cursor.execute("""
+                        INSERT INTO seat (type, room_id, seat_row, seat_column) 
+                        VALUES ('normal', %s, %s, %s)
+                    """, (room_id, row_letter, seat_column))
+                    seats_created += 1
+            
+            connection.commit()
+            return True, f"Salle '{name}' mise à jour avec succès (dimensions changées: {seats_created} sièges recréés)"
+        else:
+            # Seul le nom change, mise à jour simple
+            cursor.execute("UPDATE room SET name = %s WHERE id = %s", (name, room_id))
+            connection.commit()
+            
+            if cursor.rowcount > 0:
+                return True, f"Salle '{name}' mise à jour avec succès"
+            else:
+                return False, "Aucune modification effectuée"
         
     except Error as e:
         return False, f"Erreur lors de la mise à jour de la salle: {e}"
@@ -380,6 +419,10 @@ def update_seat_type(seat_id, new_type):
         
     try:
         cursor = connection.cursor()
+        
+        # Vérifier si la salle contenant ce siège a des séances avec des réservations
+        if has_room_bookings_for_seat(seat_id):
+            return False, "Impossible de modifier le type de siège : la salle a des séances avec des réservations"
         
         cursor.execute("UPDATE seat SET type = %s WHERE id = %s", (new_type, seat_id))
         connection.commit()
@@ -1213,10 +1256,10 @@ def delete_showing(showing_id):
             return False, "Séance non trouvée"
         
         # Vérifier s'il y a des réservations pour cette séance
-        cursor.execute("SELECT COUNT(*) as count FROM booking WHERE showing_id = %s", (showing_id,))
+        cursor.execute("SELECT COUNT(*) FROM booking WHERE showing_id = %s", (showing_id,))
         result = cursor.fetchone()
-        if result and result['count'] > 0:
-            return False, "Impossible de supprimer une séance avec des réservations"
+        if result and result[0] > 0:
+            return False, "Impossible de supprimer une séance avec des réservations existantes"
         
         # Supprimer la séance
         cursor.execute("DELETE FROM showing WHERE id = %s", (showing_id,))
@@ -1227,6 +1270,59 @@ def delete_showing(showing_id):
     except Error as e:
         print(f"Erreur lors de la suppression de la séance: {e}")
         return False, f"Erreur lors de la suppression: {e}"
+        
+    finally:
+        if connection.is_connected():
+            cursor.close()
+            connection.close()
+
+def is_room_used_in_showings(room_id):
+    """Vérifie si une salle est utilisée dans des séances"""
+    connection = get_db_connection()
+    
+    if connection is None:
+        return True  # En cas d'erreur, on considère que la salle est utilisée pour éviter les suppressions
+        
+    try:
+        cursor = connection.cursor()
+        cursor.execute("SELECT COUNT(*) FROM showing WHERE room_id = %s", (room_id,))
+        count = cursor.fetchone()[0]
+        return count > 0
+        
+    except Error as e:
+        print(f"Erreur lors de la vérification de l'utilisation de la salle: {e}")
+        return True  # En cas d'erreur, on considère que la salle est utilisée
+        
+    finally:
+        if connection.is_connected():
+            cursor.close()
+            connection.close()
+
+def has_room_bookings_for_seat(seat_id):
+    """Vérifie si la salle contenant ce siège a des séances avec des réservations"""
+    connection = get_db_connection()
+    
+    if connection is None:
+        return True  # En cas d'erreur, on considère qu'il y a des réservations pour éviter les modifications
+        
+    try:
+        cursor = connection.cursor()
+        
+        # Récupérer la salle du siège et vérifier s'il y a des réservations pour des séances dans cette salle
+        query = """
+        SELECT COUNT(*) 
+        FROM booking b
+        JOIN showing s ON b.showing_id = s.id
+        JOIN seat st ON s.room_id = st.room_id
+        WHERE st.id = %s
+        """
+        cursor.execute(query, (seat_id,))
+        count = cursor.fetchone()[0]
+        return count > 0
+        
+    except Error as e:
+        print(f"Erreur lors de la vérification des réservations pour la salle: {e}")
+        return True  # En cas d'erreur, on considère qu'il y a des réservations
         
     finally:
         if connection.is_connected():

@@ -493,13 +493,33 @@ def add_room():
 def update_room(room_id):
     """Mettre à jour une salle"""
     name = request.form.get('name')
+    nb_rows = request.form.get('rows')
+    nb_columns = request.form.get('columns')
     
     if not name:
         flash('Nom de la salle requis', 'error')
         return redirect(url_for('admin_dashboard'))
     
-    success, message = modele.update_room(room_id, name, 0, 0)  # Seul le nom peut être modifié
-    flash(message, 'success' if success else 'error')
+    # Si les dimensions ne sont pas fournies, utiliser les valeurs actuelles
+    if not nb_rows or not nb_columns:
+        # Récupérer les dimensions actuelles
+        rooms = modele.get_all_rooms()
+        current_room = next((room for room in rooms if room['id'] == room_id), None)
+        if current_room:
+            nb_rows = current_room['nb_rows']
+            nb_columns = current_room['nb_columns']
+        else:
+            flash('Salle non trouvée', 'error')
+            return redirect(url_for('admin_dashboard'))
+    
+    try:
+        nb_rows = int(nb_rows)
+        nb_columns = int(nb_columns)
+        success, message = modele.update_room(room_id, name, nb_rows, nb_columns)
+        flash(message, 'success' if success else 'error')
+    except ValueError:
+        flash('Le nombre de rangées et colonnes doit être un nombre', 'error')
+    
     return redirect(url_for('admin_dashboard'))
 
 @app.route('/admin/room/<int:room_id>/delete', methods=['POST'])
