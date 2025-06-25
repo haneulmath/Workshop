@@ -37,35 +37,8 @@
 
             <!-- Grille de sièges -->
             <div class="seat-container mb-4">
-                <div class="seat-grid" data-columns="{{ room.nb_columns }}">
-                    <!-- En-têtes de colonnes -->
-                    <div></div> <!-- Espace pour les labels de lignes -->
-                    {% for col in range(1, room.nb_columns + 1) %}
-                    <div class="col-label">{{ col }}</div>
-                    {% endfor %}
-                    
-                    <!-- Grille avec sièges -->
-                    {% for row in range(room.nb_rows) %}
-                    <div class="row-label">{{ row + 1 }}</div>
-                    {% for col in range(room.nb_columns) %}
-                        {% set seat = grid[row][col] %}
-                        {% if seat %}
-                        <div class="seat {{ seat.type }} {% if seat.status == 'occupied' %}occupied{% endif %}" 
-                             data-seat-id="{{ seat.id }}"
-                             data-row="{{ row + 1 }}" 
-                             data-col="{{ col + 1 }}"
-                             {% if seat.type not in ['stair', 'empty'] and seat.status != 'occupied' %}
-                             onclick="toggleSeat(this)"
-                             {% else %}
-                             style="cursor: not-allowed;"
-                             {% endif %}>
-                            {{ row + 1 }}{{ col + 1 }}
-                        </div>
-                        {% else %}
-                        <div class="seat empty" style="cursor: not-allowed;">-</div>
-                        {% endif %}
-                    {% endfor %}
-                    {% endfor %}
+                <div id="seats-grid" class="seats-grid">
+                    <!-- La grille sera générée dynamiquement -->
                 </div>
             </div>
 
@@ -86,14 +59,6 @@
                 <div class="legend-item">
                     <div class="legend-seat occupied" style="background-color: #dc3545;"></div>
                     <span>Occupé</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-seat stair"></div>
-                    <span>Escalier</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-seat empty"></div>
-                    <span>Vide</span>
                 </div>
             </div>
 
@@ -144,49 +109,41 @@
     font-weight: bold;
 }
 
-.seat-container {
-    overflow-x: auto;
-    padding: 20px;
-}
-
-.seat-grid {
-    display: grid;
-    gap: 8px;
-    padding: 20px;
+.seats-grid {
+    display: inline-block;
     border: 2px solid #dee2e6;
-    border-radius: 15px;
+    padding: 20px;
+    border-radius: 10px;
     background-color: #f8f9fa;
-    max-width: fit-content;
-    margin: 0 auto;
-    min-width: 600px;
 }
 
-/* Ajout des colonnes via JavaScript */
-.seat-grid[data-columns] {
-    grid-template-columns: auto repeat(var(--grid-columns), 1fr);
-}
-
-.row-label, .col-label {
+.seats-row {
     display: flex;
     align-items: center;
-    justify-content: center;
+    margin-bottom: 5px;
+}
+
+.row-label {
+    width: 30px;
+    text-align: center;
     font-weight: bold;
+    margin-right: 10px;
     color: #495057;
-    font-size: 14px;
 }
 
 .seat {
-    width: 40px;
-    height: 40px;
+    width: 35px;
+    height: 35px;
+    margin: 2px;
     border: 2px solid #6c757d;
-    border-radius: 8px;
-    display: flex;
+    border-radius: 5px;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
     font-size: 10px;
     font-weight: bold;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
     color: white;
     user-select: none;
 }
@@ -208,15 +165,17 @@
 }
 
 .seat.stair {
-    background-color: #17a2b8;
-    border-color: #17a2b8;
-    color: white;
+    background-color: transparent;
+    border: none;
+    cursor: not-allowed;
+    color: transparent;
 }
 
 .seat.empty {
     background-color: transparent;
-    border: 2px dashed #6c757d;
-    color: #6c757d;
+    border: none;
+    cursor: not-allowed;
+    color: transparent;
 }
 
 .seat.selected {
@@ -263,14 +222,13 @@
     border-color: #ffc107;
 }
 
-.legend-seat.stair {
-    background-color: #17a2b8;
-    border-color: #17a2b8;
-}
-
 .legend-seat.empty {
     background-color: transparent;
     border: 2px dashed #6c757d;
+}
+
+.seat-container {
+    text-align: center;
 }
 
 .price-info {
@@ -278,14 +236,13 @@
 }
 
 @media (max-width: 768px) {
-    .seat-grid {
-        min-width: auto;
+    .seats-grid {
         padding: 10px;
     }
     
     .seat {
-        width: 32px;
-        height: 32px;
+        width: 28px;
+        height: 28px;
         font-size: 8px;
     }
     
@@ -304,14 +261,79 @@
 let selectedSeats = [];
 const seatPrice = parseFloat('{{ showing.price }}');
 
-// Initialiser la grille CSS
+// Données de la grille depuis le serveur
+const roomData = {{ room | tojson }};
+const gridData = {{ grid | tojson }};
+
 document.addEventListener('DOMContentLoaded', function() {
-    const grid = document.querySelector('.seat-grid');
-    const columns = grid.dataset.columns;
-    grid.style.setProperty('--grid-columns', columns);
-    grid.style.gridTemplateColumns = `auto repeat(${columns}, 1fr)`;
+    generateSeatsGrid();
     updateSelectionSummary();
 });
+
+function generateSeatsGrid() {
+    const seatsGrid = document.getElementById('seats-grid');
+    seatsGrid.innerHTML = '';
+    
+    // Générer les rangées (A, B, C, ...)
+    for (let rowIndex = 1; rowIndex <= roomData.nb_rows; rowIndex++) {
+        const rowLetter = String.fromCharCode(64 + rowIndex);
+        const rowDiv = document.createElement('div');
+        rowDiv.className = 'seats-row';
+        
+        // Label de la rangée
+        const rowLabel = document.createElement('div');
+        rowLabel.className = 'row-label';
+        rowLabel.textContent = rowLetter;
+        rowDiv.appendChild(rowLabel);
+        
+        // Sièges de la rangée
+        for (let colIndex = 1; colIndex <= roomData.nb_columns; colIndex++) {
+            const seatDiv = document.createElement('div');
+            seatDiv.className = 'seat';
+            seatDiv.textContent = colIndex;
+            
+            // Trouver les données du siège dans la grille
+            let seatData = null;
+            for (let row of gridData) {
+                for (let seat of row) {
+                    if (seat && seat.seat_row === rowLetter && seat.seat_column === colIndex) {
+                        seatData = seat;
+                        break;
+                    }
+                }
+                if (seatData) break;
+            }
+            
+            if (seatData) {
+                seatDiv.classList.add(seatData.type);
+                seatDiv.dataset.seatId = seatData.id;
+                seatDiv.dataset.row = seatData.seat_row;
+                seatDiv.dataset.col = seatData.seat_column;
+                
+                if (seatData.status === 'occupied') {
+                    seatDiv.classList.add('occupied');
+                    seatDiv.style.cursor = 'not-allowed';
+                } else if (seatData.type === 'stair' || seatData.type === 'empty') {
+                    seatDiv.style.cursor = 'not-allowed';
+                } else {
+                    // Siège sélectionnable
+                    seatDiv.addEventListener('click', function() {
+                        toggleSeat(this);
+                    });
+                }
+            } else {
+                seatDiv.classList.add('empty');
+                seatDiv.style.cursor = 'not-allowed';
+            }
+            
+            rowDiv.appendChild(seatDiv);
+        }
+        
+        seatsGrid.appendChild(rowDiv);
+    }
+}
+
+function toggleSeat(seatElement) {
     const seatId = seatElement.dataset.seatId;
     const row = seatElement.dataset.row;
     const col = seatElement.dataset.col;
@@ -357,10 +379,5 @@ function updateSelectionSummary() {
         seatsInput.value = JSON.stringify(selectedSeats.map(seat => seat.id));
     }
 }
-
-// Initialisation
-document.addEventListener('DOMContentLoaded', function() {
-    updateSelectionSummary();
-});
 </script>
 {% endblock %}

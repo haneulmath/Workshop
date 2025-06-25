@@ -3,12 +3,21 @@
 from flask import Flask, render_template, jsonify, request, redirect, url_for, session, flash
 from flask_cors import CORS
 import modele  # Import du module pour la gestion de la base de données
+import importlib
 from datetime import datetime
 import json
+
+# Forcer le rechargement du module modele
+importlib.reload(modele)
 
 app = Flask(__name__)
 app.secret_key = 'votre_clef_secrete_cinema'  # Changez ceci en production
 CORS(app)
+
+# Ajouter des fonctions helper pour les templates
+@app.template_global()
+def chr_function(num):
+    return chr(num)
 
 @app.route('/')
 def index():
@@ -80,7 +89,7 @@ def showing_seats(showing_id):
 
 @app.route('/booking', methods=['POST'])
 def book_seats():
-    """Confirmer une réservation"""
+    """Rediriger vers le formulaire d'informations des spectateurs"""
     showing_id = request.form.get('showing_id')
     selected_seats = request.form.get('selected_seats')
     
@@ -96,20 +105,120 @@ def book_seats():
             flash('Aucune place sélectionnée', 'error')
             return redirect(url_for('showing_seats', showing_id=showing_id))
         
-        # Effectuer la réservation
-        success, result = modele.book_seats(showing_id, seat_ids, session.get('user_id', 1))
+        # Récupérer les informations de la séance et des places
+        showing = modele.get_showing_by_id(showing_id)
+        if not showing:
+            flash('Séance non trouvée', 'error')
+            return redirect(url_for('showings_today'))
+        
+        selected_seats_details = []
+        for seat_id in seat_ids:
+            seat = modele.get_seat_by_id(seat_id)
+            if seat:
+                selected_seats_details.append(seat)
+        
+        if not selected_seats_details:
+            flash('Places non trouvées', 'error')
+            return redirect(url_for('showing_seats', showing_id=showing_id))
+        
+        # Rediriger vers le formulaire d'informations des spectateurs
+        return render_template('booking_spectators.html',
+                             showing=showing,
+                             selected_seats=selected_seats_details,
+                             selected_seats_json=selected_seats)
+        
+    except (ValueError, json.JSONDecodeError) as e:
+        flash('Données de réservation invalides', 'error')
+        return redirect(url_for('showing_seats', showing_id=showing_id))
+
+@app.route('/booking/spectators', methods=['POST'])
+def process_spectators_info():
+    """Traiter les informations des spectateurs et finaliser la réservation"""
+    showing_id = request.form.get('showing_id')
+    selected_seats = request.form.get('selected_seats')
+    spectators_data = {}
+    
+    # Récupérer les données des spectateurs du formulaire
+    for key, value in request.form.items():
+        if key.startswith('spectators['):
+            # Parse spectators[0][first_name] => index 0, field first_name
+            import re
+            match = re.match(r'spectators\[(\d+)\]\[(\w+)\]', key)
+            if match:
+                index = int(match.group(1))
+                field = match.group(2)
+                if index not in spectators_data:
+                    spectators_data[index] = {}
+                spectators_data[index][field] = value
+    
+    if not showing_id or not selected_seats:
+        flash('Données de réservation manquantes', 'error')
+        return redirect(url_for('showings_today'))
+    
+    try:
+        showing_id = int(showing_id)
+        seat_ids = json.loads(selected_seats)
+        
+        # Valider que nous avons des informations pour chaque spectateur
+        if len(spectators_data) != len(seat_ids):
+            flash('Informations des spectateurs incomplètes', 'error')
+            return redirect(url_for('showing_seats', showing_id=showing_id))
+        
+        # Calculer le prix total
+        showing = modele.get_showing_by_id(showing_id)
+        total_price = 0
+        booking_details = []
+        
+        for i, seat_id in enumerate(seat_ids):
+            if i not in spectators_data:
+                flash('Informations manquantes pour certains spectateurs', 'error')
+                return redirect(url_for('showing_seats', showing_id=showing_id))
+            
+            spectator = spectators_data[i]
+            age = int(spectator.get('age', 0))
+            
+            # Calculer le prix selon l'âge
+            price_discount = 1.0
+            if age <= 12:
+                price_discount = 0.5  # Enfant
+            elif age <= 17:
+                price_discount = 0.7  # Jeune
+            elif age <= 25:
+                price_discount = 0.8  # Étudiant
+            elif age >= 65:
+                price_discount = 0.6  # Senior
+            
+            seat_price = showing['price'] * price_discount
+            total_price += seat_price
+            
+            seat = modele.get_seat_by_id(seat_id)
+            booking_details.append({
+                'seat': seat,
+                'spectator': spectator,
+                'price': seat_price
+            })
+        
+        # Effectuer la réservation avec les informations des spectateurs
+        success, result = modele.book_seats_with_spectators(
+            showing_id, 
+            seat_ids, 
+            spectators_data,
+            session.get('user_id', 1),
+            total_price
+        )
         
         if success:
-            return render_template('booking_confirmation.html', 
-                                 success=True, 
+            return render_template('booking_tickets.html',
+                                 success=True,
                                  booking_id=result['booking_id'],
-                                 booking=result['booking'])
+                                 booking=result['booking'],
+                                 showing=showing,
+                                 booking_details=booking_details,
+                                 total_price=total_price)
         else:
-            return render_template('booking_confirmation.html', 
-                                 success=False, 
-                                 error_message=result,
-                                 showing_id=showing_id)
-    
+            flash(f'Erreur lors de la réservation: {result}', 'error')
+            return redirect(url_for('showing_seats', showing_id=showing_id))
+        
     except (ValueError, json.JSONDecodeError) as e:
         flash('Données de réservation invalides', 'error')
         return redirect(url_for('showing_seats', showing_id=showing_id))

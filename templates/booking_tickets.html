@@ -1,0 +1,282 @@
+{% extends "base.html" %}
+
+{% block title %}Billets - Réservation confirmée{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            {% if success %}
+            <!-- Confirmation de réussite -->
+            <div class="alert alert-success text-center" role="alert">
+                <i class="fas fa-check-circle fa-3x mb-3"></i>
+                <h3>Réservation confirmée !</h3>
+                <p class="mb-0">Votre réservation <strong>#{{ booking_id }}</strong> a été enregistrée avec succès.</p>
+            </div>
+
+            <!-- Informations de la séance -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-film"></i> {{ showing.movie }}
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p class="mb-2">
+                                <i class="fas fa-calendar text-primary"></i>
+                                <strong>Date :</strong> {{ showing.date.strftime('%d/%m/%Y') }}
+                            </p>
+                            <p class="mb-2">
+                                <i class="fas fa-clock text-primary"></i>
+                                <strong>Heure :</strong> {{ showing.time }}
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <p class="mb-2">
+                                <i class="fas fa-door-open text-primary"></i>
+                                <strong>Salle :</strong> {{ showing.room }}
+                            </p>
+                            <p class="mb-2">
+                                <i class="fas fa-euro-sign text-primary"></i>
+                                <strong>Prix total :</strong> {{ "%.2f"|format(total_price) }}€
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Billets individuels -->
+            <div class="row">
+                {% for detail in booking_details %}
+                <div class="col-lg-6 mb-4">
+                    <div class="card ticket-card">
+                        <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+                            <span>
+                                <i class="fas fa-ticket-alt"></i> 
+                                Billet {{ loop.index }}
+                            </span>
+                            <span class="badge bg-light text-dark">
+                                Place {{ detail.seat.seat_row }}{{ detail.seat.seat_column }}
+                                {% if detail.seat.type == 'pmr' %}
+                                    <i class="fas fa-wheelchair ms-1"></i>
+                                {% endif %}
+                            </span>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-8">
+                                    <h6 class="card-title mb-2">
+                                        {{ detail.spectator.first_name }} {{ detail.spectator.last_name }}
+                                    </h6>
+                                    <p class="text-muted mb-1">
+                                        <small>Âge : {{ detail.spectator.age }} ans</small>
+                                    </p>
+                                    <p class="text-muted mb-0">
+                                        <small>
+                                            {% if detail.spectator.age|int <= 12 %}
+                                                Tarif Enfant (-12 ans)
+                                            {% elif detail.spectator.age|int <= 17 %}
+                                                Tarif Jeune (13-17 ans)
+                                            {% elif detail.spectator.age|int <= 25 %}
+                                                Tarif Étudiant (18-25 ans)
+                                            {% elif detail.spectator.age|int >= 65 %}
+                                                Tarif Senior (+65 ans)
+                                            {% else %}
+                                                Tarif Adulte
+                                            {% endif %}
+                                        </small>
+                                    </p>
+                                </div>
+                                <div class="col-4 text-end">
+                                    <h5 class="text-success mb-0">{{ "%.2f"|format(detail.price) }}€</h5>
+                                </div>
+                            </div>
+                            
+                            <!-- Code-barres simulé -->
+                            <div class="barcode mt-3 text-center">
+                                <div class="barcode-lines">
+                                    {% for i in range(20) %}
+                                        <div class="barcode-line"></div>
+                                    {% endfor %}
+                                </div>
+                                <small class="text-muted d-block mt-2">{{ booking_id }}{{ detail.seat.id }}{{ loop.index }}</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Instructions et actions -->
+            <div class="card mt-4">
+                <div class="card-body text-center">
+                    <h5 class="card-title">
+                        <i class="fas fa-info-circle"></i> Instructions importantes
+                    </h5>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <i class="fas fa-print fa-2x text-primary mb-2"></i>
+                            <p><strong>Imprimez vos billets</strong><br>
+                            <small>Présentez vos billets à l'entrée de la salle</small></p>
+                        </div>
+                        <div class="col-md-4">
+                            <i class="fas fa-clock fa-2x text-warning mb-2"></i>
+                            <p><strong>Arrivez 15 minutes avant</strong><br>
+                            <small>Pour éviter les retards et profiter des bandes-annonces</small></p>
+                        </div>
+                        <div class="col-md-4">
+                            <i class="fas fa-mobile-alt fa-2x text-success mb-2"></i>
+                            <p><strong>Conservez ce numéro</strong><br>
+                            <small>Réservation #{{ booking_id }}</small></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Boutons d'action -->
+            <div class="text-center mt-4 mb-5">
+                <button onclick="window.print()" class="btn btn-primary btn-lg me-3">
+                    <i class="fas fa-print"></i> Imprimer les billets
+                </button>
+                <a href="{{ url_for('home') }}" class="btn btn-outline-secondary btn-lg">
+                    <i class="fas fa-home"></i> Retour à l'accueil
+                </a>
+            </div>
+
+            {% else %}
+            <!-- Erreur -->
+            <div class="alert alert-danger text-center" role="alert">
+                <i class="fas fa-exclamation-triangle fa-3x mb-3"></i>
+                <h3>Erreur lors de la réservation</h3>
+                <p>{{ error_message }}</p>
+                <a href="{{ url_for('showing_seats', showing_id=showing_id) }}" class="btn btn-primary">
+                    <i class="fas fa-arrow-left"></i> Retour à la sélection
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+.ticket-card {
+    border: 2px dashed #007bff;
+    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+}
+
+.ticket-card .card-header {
+    background: linear-gradient(135deg, #6c757d 0%, #495057 100%) !important;
+}
+
+.barcode {
+    background-color: white;
+    padding: 10px;
+    border: 1px solid #dee2e6;
+    border-radius: 5px;
+}
+
+.barcode-lines {
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    height: 40px;
+    gap: 2px;
+}
+
+.barcode-line {
+    background-color: #000;
+    width: 2px;
+    height: var(--height, 20px);
+}
+
+.barcode-line:nth-child(odd) {
+    --height: 30px;
+}
+
+.barcode-line:nth-child(3n) {
+    --height: 35px;
+}
+
+.barcode-line:nth-child(5n) {
+    --height: 25px;
+}
+
+.barcode-line:nth-child(7n) {
+    --height: 40px;
+}
+
+@media print {
+    .btn, .alert, nav, footer {
+        display: none !important;
+    }
+    
+    .container {
+        max-width: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    
+    .card {
+        break-inside: avoid;
+        margin-bottom: 20px;
+    }
+    
+    .ticket-card {
+        border: 2px solid #000 !important;
+        page-break-inside: avoid;
+    }
+    
+    .col-lg-6 {
+        width: 48% !important;
+        float: left !important;
+        margin-right: 2% !important;
+    }
+}
+
+.fade-in {
+    animation: fadeIn 0.8s ease-in;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.ticket-card {
+    animation: slideInUp 0.6s ease-out;
+}
+
+.ticket-card:nth-child(even) {
+    animation-delay: 0.2s;
+}
+
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Ajouter classe d'animation
+    document.querySelector('.container').classList.add('fade-in');
+    
+    // Animation des cartes
+    const cards = document.querySelectorAll('.ticket-card');
+    cards.forEach((card, index) => {
+        setTimeout(() => {
+            card.style.opacity = '1';
+            card.style.transform = 'translateY(0)';
+        }, index * 150);
+    });
+});
+</script>
+{% endblock %}
