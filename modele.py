@@ -753,7 +753,7 @@ def book_seats(showing_id, seat_ids, user_id):
         cursor.execute("""
             INSERT INTO booking (price, account_id, showing_id) 
             VALUES (%s, %s, %s)
-        """, (int(total_price * 100), user_id, showing_id))
+        """, (total_price, user_id, showing_id))
         booking_id = cursor.lastrowid
         
         # Créer les clients et réservations de sièges
@@ -827,7 +827,7 @@ def book_seats_with_spectators(showing_id, seat_ids, spectators_data, user_id, t
         cursor.execute("""
             INSERT INTO booking (price, account_id, showing_id) 
             VALUES (%s, %s, %s)
-        """, (int(total_price * 100), user_id, showing_id))
+        """, (total_price, user_id, showing_id))
         booking_id = cursor.lastrowid
         
         # Créer les clients et réservations de sièges avec les vraies informations
@@ -879,6 +879,122 @@ def book_seats_with_spectators(showing_id, seat_ids, spectators_data, user_id, t
     except Error as e:
         print(f"Erreur lors de la réservation avec spectateurs: {e}")
         return False, f"Erreur lors de la réservation: {e}"
+        
+    finally:
+        if connection.is_connected():
+            cursor.close()
+            connection.close()
+
+def get_user_bookings(user_id):
+    """Récupère toutes les réservations d'un utilisateur avec les détails"""
+    connection = get_db_connection()
+    
+    if connection is None:
+        return []
+        
+    try:
+        cursor = connection.cursor(dictionary=True)
+        
+        # Récupérer les réservations avec les détails des séances et films
+        cursor.execute("""
+            SELECT b.id as booking_id, b.price,
+                   s.id as showing_id, s.date, s.starttime,
+                   m.name as movie_name, m.duration,
+                   r.name as room_name,
+                   COUNT(sr.seat_id) as seat_count
+            FROM booking b
+            JOIN showing s ON b.showing_id = s.id
+            JOIN movie m ON s.movie_id = m.id
+            JOIN room r ON s.room_id = r.id
+            JOIN seatreservation sr ON sr.showing_id = s.id
+            JOIN customer c ON sr.customer_id = c.id AND c.booking_id = b.id
+            WHERE b.account_id = %s
+            GROUP BY b.id, s.id, m.id, r.id
+            ORDER BY b.id DESC
+        """, (user_id,))
+        
+        bookings = cursor.fetchall()
+        
+        # Pour chaque réservation, récupérer les détails des places et spectateurs
+        for booking in bookings:
+            # Le prix est déjà en euros dans la base selon le schéma V4.sql
+            booking['price_euros'] = float(booking['price']) if booking['price'] else 0.0
+            booking['time'] = str(booking['starttime'])
+            
+            # Récupérer les détails des places et spectateurs
+            cursor.execute("""
+                SELECT c.firstname, c.lastname, c.age, c.pmr,
+                       st.seat_row, st.seat_column, st.type as seat_type
+                FROM customer c
+                JOIN seatreservation sr ON c.id = sr.customer_id
+                JOIN seat st ON sr.seat_id = st.id
+                WHERE c.booking_id = %s AND sr.showing_id = %s
+                ORDER BY st.seat_row, st.seat_column
+            """, (booking['booking_id'], booking['showing_id']))
+            
+            booking['seats_details'] = cursor.fetchall()
+        
+        return bookings
+        
+    except Error as e:
+        print(f"Erreur lors de la récupération des réservations: {e}")
+        return []
+        
+    finally:
+        if connection.is_connected():
+            cursor.close()
+            connection.close()
+
+def get_booking_details(booking_id, user_id):
+    """Récupère les détails complets d'une réservation spécifique"""
+    connection = get_db_connection()
+    
+    if connection is None:
+        return None
+        
+    try:
+        cursor = connection.cursor(dictionary=True)
+        
+        # Vérifier que la réservation appartient à l'utilisateur
+        cursor.execute("""
+            SELECT b.id as booking_id, b.price,
+                   s.id as showing_id, s.date, s.starttime,
+                   m.name as movie_name, m.duration, m.director, m.cast,
+                   r.name as room_name
+            FROM booking b
+            JOIN showing s ON b.showing_id = s.id
+            JOIN movie m ON s.movie_id = m.id
+            JOIN room r ON s.room_id = r.id
+            WHERE b.id = %s AND b.account_id = %s
+        """, (booking_id, user_id))
+        
+        booking = cursor.fetchone()
+        
+        if not booking:
+            return None
+        
+        booking['price_euros'] = float(booking['price']) if booking['price'] else 0.0
+        booking['time'] = str(booking['starttime'])
+        
+        # Récupérer les détails des places et spectateurs
+        cursor.execute("""
+            SELECT c.firstname, c.lastname, c.age, c.pmr,
+                   st.seat_row, st.seat_column, st.type as seat_type,
+                   st.id as seat_id
+            FROM customer c
+            JOIN seatreservation sr ON c.id = sr.customer_id
+            JOIN seat st ON sr.seat_id = st.id
+            WHERE c.booking_id = %s AND sr.showing_id = %s
+            ORDER BY st.seat_row, st.seat_column
+        """, (booking['booking_id'], booking['showing_id']))
+        
+        booking['seats_details'] = cursor.fetchall()
+        
+        return booking
+        
+    except Error as e:
+        print(f"Erreur lors de la récupération des détails de réservation: {e}")
+        return None
         
     finally:
         if connection.is_connected():

@@ -557,6 +557,92 @@ def delete_showing(showing_id):
     flash(message, 'success' if success else 'error')
     return redirect(url_for('admin_dashboard'))
 
+@app.route('/my-bookings')
+def my_bookings():
+    """Afficher les réservations de l'utilisateur connecté"""
+    if 'user_id' not in session:
+        flash('Vous devez être connecté pour voir vos réservations', 'error')
+        return redirect(url_for('login_form'))
+    
+    user_id = session['user_id']
+    bookings = modele.get_user_bookings(user_id)
+    
+    # Ajouter la date actuelle pour les comparaisons dans le template
+    from datetime import date
+    today = date.today()
+    
+    # Convertir les dates datetime en date pour la comparaison
+    for booking in bookings:
+        if hasattr(booking['date'], 'date'):
+            booking['date_only'] = booking['date'].date()
+        else:
+            booking['date_only'] = booking['date']
+    
+    return render_template('my_bookings.html', bookings=bookings, today=today)
+
+@app.route('/booking/<int:booking_id>/details')
+def booking_details(booking_id):
+    """Afficher les détails d'une réservation spécifique avec réimpression des billets"""
+    if 'user_id' not in session:
+        flash('Vous devez être connecté pour voir cette réservation', 'error')
+        return redirect(url_for('login_form'))
+    
+    user_id = session['user_id']
+    booking = modele.get_booking_details(booking_id, user_id)
+    
+    if not booking:
+        flash('Réservation non trouvée', 'error')
+        return redirect(url_for('my_bookings'))
+    
+    # Calculer les prix individuels selon l'âge (comme dans la réservation originale)
+    booking_details = []
+    for seat_detail in booking['seats_details']:
+        age = seat_detail['age']
+        
+        # Calculer le prix selon l'âge (en utilisant le prix de base de la séance)
+        # On utilise une estimation du prix de base à partir du prix total
+        base_price = booking['price_euros'] / len(booking['seats_details'])
+        
+        price_discount = 1.0
+        if age <= 12:
+            price_discount = 0.5  # Enfant
+        elif age <= 17:
+            price_discount = 0.7  # Jeune
+        elif age <= 25:
+            price_discount = 0.8  # Étudiant
+        elif age >= 65:
+            price_discount = 0.6  # Senior
+        
+        seat_price = base_price * price_discount
+        
+        booking_details.append({
+            'seat': seat_detail,
+            'spectator': {
+                'first_name': seat_detail['firstname'],
+                'last_name': seat_detail['lastname'],
+                'age': seat_detail['age']
+            },
+            'price': seat_price
+        })
+    
+    # Préparer l'objet showing pour compatibilité avec le template booking_tickets
+    showing = {
+        'id': booking['showing_id'],
+        'movie': booking['movie_name'],
+        'date': booking['date'],
+        'time': booking['time'],
+        'room': booking['room_name']
+    }
+    
+    return render_template('booking_tickets.html',
+                         success=True,
+                         booking_id=booking['booking_id'],
+                         booking=booking,
+                         showing=showing,
+                         booking_details=booking_details,
+                         total_price=booking['price_euros'],
+                         is_reprint=True)
+
 # Point d'entrée du programme
 if __name__ == "__main__":
     print("Démarrage du serveur Flask sur le port 5002...")

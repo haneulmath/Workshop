@@ -1,0 +1,279 @@
+{% extends "base.html" %}
+
+{% block title %}Mes réservations - Cinema Palace{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1>
+                    <i class="fas fa-ticket-alt text-primary"></i> 
+                    Mes réservations
+                </h1>
+                <a href="{{ url_for('home') }}" class="btn btn-outline-primary">
+                    <i class="fas fa-home"></i> Accueil
+                </a>
+            </div>
+
+            {% if bookings %}
+                <div class="row">
+                    {% for booking in bookings %}
+                    <div class="col-lg-6 mb-4">
+                        <div class="card booking-card h-100">
+                            <div class="card-header bg-primary text-white">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h5 class="mb-0">
+                                        <i class="fas fa-film"></i> 
+                                        {{ booking.movie_name }}
+                                    </h5>
+                                    <span class="badge bg-light text-dark">
+                                        #{{ booking.booking_id }}
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="row mb-3">
+                                    <div class="col-6">
+                                        <small class="text-muted">Date de la séance</small>
+                                        <div class="fw-bold">
+                                            <i class="fas fa-calendar text-primary"></i>
+                                            {{ booking.date.strftime('%d/%m/%Y') }}
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <small class="text-muted">Heure</small>
+                                        <div class="fw-bold">
+                                            <i class="fas fa-clock text-primary"></i>
+                                            {{ booking.time }}
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="row mb-3">
+                                    <div class="col-6">
+                                        <small class="text-muted">Salle</small>
+                                        <div class="fw-bold">
+                                            <i class="fas fa-door-open text-primary"></i>
+                                            {{ booking.room_name }}
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <small class="text-muted">Places réservées</small>
+                                        <div class="fw-bold">
+                                            <i class="fas fa-chair text-primary"></i>
+                                            {{ booking.seat_count }} place{{ 's' if booking.seat_count > 1 else '' }}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row mb-3">
+                                    <div class="col-12">
+                                        <small class="text-muted">Prix total</small>
+                                        <div class="fw-bold text-success fs-5">
+                                            <i class="fas fa-euro-sign"></i>
+                                            {{ "%.2f"|format(booking.price_euros) }}€
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Statut de la séance -->
+                                <div class="mb-3">
+                                    {% set showing_date = booking.date_only %}
+                                    {% if showing_date < today %}
+                                        <span class="badge bg-secondary">
+                                            <i class="fas fa-history"></i> Séance passée
+                                        </span>
+                                    {% elif showing_date == today %}
+                                        <span class="badge bg-warning text-dark">
+                                            <i class="fas fa-clock"></i> Aujourd'hui
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-calendar-check"></i> À venir
+                                        </span>
+                                    {% endif %}
+                                </div>
+
+                                <small class="text-muted">
+                                    <i class="fas fa-info-circle"></i>
+                                    Réservation #{{ booking.booking_id }}
+                                </small>
+                            </div>
+                            <div class="card-footer bg-light">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <a href="{{ url_for('booking_details', booking_id=booking.booking_id) }}" 
+                                       class="btn btn-primary">
+                                        <i class="fas fa-eye"></i> Voir les billets
+                                    </a>
+                                    <a href="{{ url_for('booking_details', booking_id=booking.booking_id) }}" 
+                                       class="btn btn-outline-secondary">
+                                        <i class="fas fa-print"></i> Réimprimer
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Statistiques -->
+                <div class="card mt-4">
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <i class="fas fa-chart-bar"></i> Mes statistiques
+                        </h5>
+                        <div class="row text-center">
+                            <div class="col-md-3">
+                                <div class="stat-item">
+                                    <div class="stat-number">{{ bookings|length }}</div>
+                                    <div class="stat-label">Réservation{{ 's' if bookings|length > 1 else '' }}</div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="stat-item">
+                                    <div class="stat-number">{{ bookings|sum(attribute='seat_count') }}</div>
+                                    <div class="stat-label">Place{{ 's' if bookings|sum(attribute='seat_count') > 1 else '' }} réservée{{ 's' if bookings|sum(attribute='seat_count') > 1 else '' }}</div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="stat-item">
+                                    <div class="stat-number">{{ "%.0f"|format(bookings|sum(attribute='price_euros')) }}€</div>
+                                    <div class="stat-label">Total dépensé</div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="stat-item">
+                                    <div class="stat-number">
+                                        {% set upcoming = namespace(count=0) %}
+                                        {% for booking in bookings %}
+                                            {% if booking.date_only >= today %}
+                                                {% set upcoming.count = upcoming.count + 1 %}
+                                            {% endif %}
+                                        {% endfor %}
+                                        {{ upcoming.count }}
+                                    </div>
+                                    <div class="stat-label">Séance{{ 's' if upcoming.count > 1 else '' }} à venir</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            {% else %}
+                <div class="text-center py-5">
+                    <div class="empty-state">
+                        <i class="fas fa-ticket-alt fa-4x text-muted mb-4"></i>
+                        <h3 class="text-muted">Aucune réservation</h3>
+                        <p class="text-muted">Vous n'avez encore effectué aucune réservation.</p>
+                        <a href="{{ url_for('movies') }}" class="btn btn-primary btn-lg">
+                            <i class="fas fa-film"></i> Découvrir nos films
+                        </a>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+.booking-card {
+    border: none;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.booking-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);
+}
+
+.booking-card .card-header {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%) !important;
+}
+
+.stat-item {
+    padding: 15px;
+}
+
+.stat-number {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #007bff;
+    line-height: 1;
+}
+
+.stat-label {
+    font-size: 0.9rem;
+    color: #6c757d;
+    margin-top: 5px;
+}
+
+.empty-state {
+    padding: 60px 20px;
+}
+
+.badge {
+    font-size: 0.8rem;
+}
+
+@media (max-width: 768px) {
+    .card-footer .d-flex {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .card-footer .btn {
+        width: 100%;
+    }
+    
+    .stat-item {
+        margin-bottom: 20px;
+    }
+}
+
+.fade-in {
+    animation: fadeIn 0.8s ease-in;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.booking-card {
+    animation: slideInUp 0.6s ease-out;
+}
+
+.booking-card:nth-child(even) {
+    animation-delay: 0.1s;
+}
+
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Ajouter classe d'animation
+    document.querySelector('.container').classList.add('fade-in');
+    
+    // Animation des cartes
+    const cards = document.querySelectorAll('.booking-card');
+    cards.forEach((card, index) => {
+        setTimeout(() => {
+            card.style.opacity = '1';
+            card.style.transform = 'translateY(0)';
+        }, index * 100);
+    });
+});
+</script>
+{% endblock %}

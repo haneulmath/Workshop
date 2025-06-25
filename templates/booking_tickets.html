@@ -10,8 +10,13 @@
             <!-- Confirmation de réussite -->
             <div class="alert alert-success text-center" role="alert">
                 <i class="fas fa-check-circle fa-3x mb-3"></i>
-                <h3>Réservation confirmée !</h3>
-                <p class="mb-0">Votre réservation <strong>#{{ booking_id }}</strong> a été enregistrée avec succès.</p>
+                {% if is_reprint %}
+                    <h3>Vos billets</h3>
+                    <p class="mb-0">Réservation <strong>#{{ booking_id }}</strong> - Réimpression des billets</p>
+                {% else %}
+                    <h3>Réservation confirmée !</h3>
+                    <p class="mb-0">Votre réservation <strong>#{{ booking_id }}</strong> a été enregistrée avec succès.</p>
+                {% endif %}
             </div>
 
             <!-- Informations de la séance -->
@@ -140,9 +145,15 @@
                 <button onclick="window.print()" class="btn btn-primary btn-lg me-3">
                     <i class="fas fa-print"></i> Imprimer les billets
                 </button>
-                <a href="{{ url_for('home') }}" class="btn btn-outline-secondary btn-lg">
-                    <i class="fas fa-home"></i> Retour à l'accueil
-                </a>
+                {% if is_reprint %}
+                    <a href="{{ url_for('my_bookings') }}" class="btn btn-outline-secondary btn-lg">
+                        <i class="fas fa-arrow-left"></i> Retour à mes réservations
+                    </a>
+                {% else %}
+                    <a href="{{ url_for('home') }}" class="btn btn-outline-secondary btn-lg">
+                        <i class="fas fa-home"></i> Retour à l'accueil
+                    </a>
+                {% endif %}
             </div>
 
             {% else %}
