@@ -1000,3 +1000,235 @@ def get_booking_details(booking_id, user_id):
         if connection.is_connected():
             cursor.close()
             connection.close()
+
+def get_all_bookings():
+    """Récupère toutes les réservations pour l'administration"""
+    connection = get_db_connection()
+    
+    if connection is None:
+        return None
+        
+    try:
+        cursor = connection.cursor(dictionary=True)
+        
+        cursor.execute("""
+            SELECT b.id as booking_id, b.price,
+                   s.id as showing_id, s.date, s.starttime,
+                   m.name as movie_name,
+                   r.name as room_name,
+                   a.username, a.email,
+                   COUNT(sr.seat_id) as seat_count,
+                   GROUP_CONCAT(CONCAT(st.seat_row, st.seat_column) ORDER BY st.seat_row, st.seat_column) as seats
+            FROM booking b
+            JOIN showing s ON b.showing_id = s.id
+            JOIN movie m ON s.movie_id = m.id
+            JOIN room r ON s.room_id = r.id
+            JOIN account a ON b.account_id = a.id
+            JOIN seatreservation sr ON sr.showing_id = s.id
+            JOIN customer c ON sr.customer_id = c.id AND c.booking_id = b.id
+            JOIN seat st ON sr.seat_id = st.id
+            GROUP BY b.id, s.id, m.id, r.id, a.id
+            ORDER BY b.id DESC
+        """)
+        
+        bookings = cursor.fetchall()
+        
+        # Convertir le prix et formater les données
+        for booking in bookings:
+            booking['price_euros'] = float(booking['price']) if booking['price'] else 0.0
+            booking['time'] = str(booking['starttime'])
+            # Convertir la liste de places en array
+            if booking['seats']:
+                booking['seats_list'] = booking['seats'].split(',')
+            else:
+                booking['seats_list'] = []
+        
+        return bookings
+        
+    except Error as e:
+        print(f"Erreur lors de la récupération des réservations: {e}")
+        return None
+        
+    finally:
+        if connection.is_connected():
+            cursor.close()
+            connection.close()
+
+def cancel_booking(booking_id):
+    """Annule une réservation (supprime toutes les données associées)"""
+    connection = get_db_connection()
+    
+    if connection is None:
+        return False, "Erreur de connexion à la base de données"
+        
+    try:
+        cursor = connection.cursor(dictionary=True)
+        
+        # Vérifier que la réservation existe
+        cursor.execute("SELECT id FROM booking WHERE id = %s", (booking_id,))
+        booking = cursor.fetchone()
+        
+        if not booking:
+            return False, "Réservation non trouvée"
+        
+        # Supprimer les réservations de sièges (cela libère les sièges)
+        cursor.execute("""
+            DELETE sr FROM seatreservation sr 
+            JOIN customer c ON sr.customer_id = c.id 
+            WHERE c.booking_id = %s
+        """, (booking_id,))
+        
+        # Supprimer les clients
+        cursor.execute("DELETE FROM customer WHERE booking_id = %s", (booking_id,))
+        
+        # Supprimer la réservation principale
+        cursor.execute("DELETE FROM booking WHERE id = %s", (booking_id,))
+        
+        connection.commit()
+        
+        return True, "Réservation annulée avec succès"
+        
+    except Error as e:
+        print(f"Erreur lors de l'annulation de la réservation: {e}")
+        return False, f"Erreur lors de l'annulation: {e}"
+        
+    finally:
+        if connection.is_connected():
+            cursor.close()
+            connection.close()
+
+def add_showing(date, starttime, baseprice, room_id, movie_id):
+    """Ajouter une nouvelle séance"""
+    connection = get_db_connection()
+    
+    if connection is None:
+        return False, "Erreur de connexion à la base de données"
+    
+    try:
+        cursor = connection.cursor()
+        
+        # Vérifier que le film existe
+        cursor.execute("SELECT id FROM movie WHERE id = %s", (movie_id,))
+        if not cursor.fetchone():
+            return False, "Film non trouvé"
+        
+        # Vérifier que la salle existe
+        cursor.execute("SELECT id FROM room WHERE id = %s", (room_id,))
+        if not cursor.fetchone():
+            return False, "Salle non trouvée"
+        
+        # Vérifier qu'il n'y a pas de conflit d'horaire dans la même salle
+        cursor.execute("""
+            SELECT id FROM showing 
+            WHERE room_id = %s AND date = %s AND starttime = %s
+        """, (room_id, date, starttime))
+        
+        if cursor.fetchone():
+            return False, "Une séance existe déjà à cette heure dans cette salle"
+        
+        # Ajouter la séance
+        cursor.execute("""
+            INSERT INTO showing (date, starttime, baseprice, room_id, movie_id)
+            VALUES (%s, %s, %s, %s, %s)
+        """, (date, starttime, baseprice, room_id, movie_id))
+        
+        connection.commit()
+        return True, "Séance ajoutée avec succès"
+        
+    except Error as e:
+        print(f"Erreur lors de l'ajout de la séance: {e}")
+        return False, f"Erreur lors de l'ajout: {e}"
+        
+    finally:
+        if connection.is_connected():
+            cursor.close()
+            connection.close()
+
+def update_showing(showing_id, date, starttime, baseprice, room_id, movie_id):
+    """Mettre à jour une séance"""
+    connection = get_db_connection()
+    
+    if connection is None:
+        return False, "Erreur de connexion à la base de données"
+    
+    try:
+        cursor = connection.cursor()
+        
+        # Vérifier que la séance existe
+        cursor.execute("SELECT id FROM showing WHERE id = %s", (showing_id,))
+        if not cursor.fetchone():
+            return False, "Séance non trouvée"
+        
+        # Vérifier que le film existe
+        cursor.execute("SELECT id FROM movie WHERE id = %s", (movie_id,))
+        if not cursor.fetchone():
+            return False, "Film non trouvé"
+        
+        # Vérifier que la salle existe
+        cursor.execute("SELECT id FROM room WHERE id = %s", (room_id,))
+        if not cursor.fetchone():
+            return False, "Salle non trouvée"
+        
+        # Vérifier qu'il n'y a pas de conflit d'horaire (en excluant la séance actuelle)
+        cursor.execute("""
+            SELECT id FROM showing 
+            WHERE room_id = %s AND date = %s AND starttime = %s AND id != %s
+        """, (room_id, date, starttime, showing_id))
+        
+        if cursor.fetchone():
+            return False, "Une autre séance existe déjà à cette heure dans cette salle"
+        
+        # Mettre à jour la séance
+        cursor.execute("""
+            UPDATE showing 
+            SET date = %s, starttime = %s, baseprice = %s, room_id = %s, movie_id = %s
+            WHERE id = %s
+        """, (date, starttime, baseprice, room_id, movie_id, showing_id))
+        
+        connection.commit()
+        return True, "Séance mise à jour avec succès"
+        
+    except Error as e:
+        print(f"Erreur lors de la mise à jour de la séance: {e}")
+        return False, f"Erreur lors de la mise à jour: {e}"
+        
+    finally:
+        if connection.is_connected():
+            cursor.close()
+            connection.close()
+
+def delete_showing(showing_id):
+    """Supprimer une séance"""
+    connection = get_db_connection()
+    
+    if connection is None:
+        return False, "Erreur de connexion à la base de données"
+    
+    try:
+        cursor = connection.cursor()
+        
+        # Vérifier que la séance existe
+        cursor.execute("SELECT id FROM showing WHERE id = %s", (showing_id,))
+        if not cursor.fetchone():
+            return False, "Séance non trouvée"
+        
+        # Vérifier s'il y a des réservations pour cette séance
+        cursor.execute("SELECT COUNT(*) as count FROM booking WHERE showing_id = %s", (showing_id,))
+        result = cursor.fetchone()
+        if result and result['count'] > 0:
+            return False, "Impossible de supprimer une séance avec des réservations"
+        
+        # Supprimer la séance
+        cursor.execute("DELETE FROM showing WHERE id = %s", (showing_id,))
+        
+        connection.commit()
+        return True, "Séance supprimée avec succès"
+        
+    except Error as e:
+        print(f"Erreur lors de la suppression de la séance: {e}")
+        return False, f"Erreur lors de la suppression: {e}"
+        
+    finally:
+        if connection.is_connected():
+            cursor.close()
+            connection.close()

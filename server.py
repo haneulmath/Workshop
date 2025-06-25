@@ -29,7 +29,11 @@ def home():
     """Page d'accueil principale"""
     # Récupérer les séances d'aujourd'hui pour l'aperçu
     showings_today = modele.get_showings_today()
-    return render_template('home.html', showings_today=showings_today)
+    
+    # Récupérer tous les films à l'affiche
+    movies = modele.get_all_movies()
+    
+    return render_template('home.html', showings_today=showings_today, movies=movies)
 
 @app.route('/movies')
 def movies():
@@ -405,8 +409,13 @@ def admin_dashboard():
     movies = modele.get_all_movies()
     rooms = modele.get_all_rooms()
     showings = modele.get_all_showings()
+    bookings = modele.get_all_bookings()
     
-    return render_template('admin.html', movies=movies, rooms=rooms, showings=showings)
+    # Ajouter la date actuelle pour les statistiques
+    from datetime import date
+    today = date.today()
+    
+    return render_template('admin.html', movies=movies, rooms=rooms, showings=showings, bookings=bookings, today=today)
 
 @app.route('/admin/movie', methods=['POST'])
 def add_movie():
@@ -554,6 +563,13 @@ def update_showing(showing_id):
 def delete_showing(showing_id):
     """Supprimer une séance"""
     success, message = modele.delete_showing(showing_id)
+    flash(message, 'success' if success else 'error')
+    return redirect(url_for('admin_dashboard'))
+
+@app.route('/admin/booking/<int:booking_id>/cancel', methods=['POST'])
+def cancel_booking(booking_id):
+    """Annuler une réservation"""
+    success, message = modele.cancel_booking(booking_id)
     flash(message, 'success' if success else 'error')
     return redirect(url_for('admin_dashboard'))
 

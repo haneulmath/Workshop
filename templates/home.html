@@ -8,67 +8,170 @@
         <div class="jumbotron bg-primary text-white text-center p-5 rounded mb-4">
             <h1 class="display-4">Bienvenue au Cinema Palace</h1>
             <p class="lead">Découvrez nos films et réservez vos places en ligne</p>
-            <a class="btn btn-light btn-lg" href="{{ url_for('movies') }}" role="button">Voir les films</a>
+            <a class="btn btn-light btn-lg" href="{{ url_for('movies') }}" role="button">Voir tous les films</a>
         </div>
     </div>
 </div>
 
-<div class="row">
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header">
-                <h5>🎬 Films à l'affiche</h5>
-            </div>
-            <div class="card-body">
-                {% if movies %}
-                    <div class="list-group">
-                        {% for movie in movies[:3] %}
-                        <div class="list-group-item">
-                            <div class="d-flex w-100 justify-content-between">
-                                <h6 class="mb-1">{{ movie.name }}</h6>
-                                <small>{{ movie.duration }} min</small>
+<!-- Section Films à l'affiche -->
+<div class="row mb-4">
+    <div class="col-12">
+        <h2 class="mb-4">
+            <i class="fas fa-film text-primary"></i> Films à l'affiche
+        </h2>
+        {% if movies %}
+            <div class="row">
+                {% for movie in movies[:6] %}
+                <div class="col-lg-4 col-md-6 mb-4">
+                    <div class="card h-100 movie-card">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ movie.name }}</h5>
+                            <div class="movie-details mb-3">
+                                <span class="badge bg-primary me-2">
+                                    <i class="fas fa-clock"></i> {{ movie.duration }} min
+                                </span>
+                                {% if movie.director %}
+                                    <div class="text-muted small mt-2">
+                                        <i class="fas fa-user-tie"></i> Réalisé par {{ movie.director }}
+                                    </div>
+                                {% endif %}
+                                {% if movie.cast %}
+                                    <div class="text-muted small mt-1">
+                                        <i class="fas fa-users"></i> {{ movie.cast }}
+                                    </div>
+                                {% endif %}
                             </div>
-                            <a href="{{ url_for('movie_detail', movie_id=movie.id) }}" class="btn btn-sm btn-primary">Voir les séances</a>
+                            {% if movie.synopsis %}
+                                <p class="card-text">
+                                    {% if movie.synopsis|length > 120 %}
+                                        {{ movie.synopsis[:120] }}...
+                                    {% else %}
+                                        {{ movie.synopsis }}
+                                    {% endif %}
+                                </p>
+                            {% endif %}
                         </div>
-                        {% endfor %}
-                    </div>
-                    <div class="text-center mt-3">
-                        <a href="{{ url_for('movies') }}" class="btn btn-outline-primary">Voir tous les films</a>
-                    </div>
-                {% else %}
-                    <p class="text-muted">Aucun film disponible pour le moment.</p>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-    
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header">
-                <h5>🕐 Séances d'aujourd'hui</h5>
-            </div>
-            <div class="card-body">
-                {% if showings_today %}
-                    <div class="list-group">
-                        {% for showing in showings_today[:3] %}
-                        <div class="list-group-item">
-                            <div class="d-flex w-100 justify-content-between">
-                                <h6 class="mb-1">{{ showing.movie_name }}</h6>
-                                <small>{{ showing.starttime }}</small>
-                            </div>
-                            <p class="mb-1">{{ showing.room_name }} - {{ "%.2f"|format(showing.baseprice / 100) }}€</p>
-                            <a href="{{ url_for('showing_seats', showing_id=showing.id) }}" class="btn btn-sm btn-success">Réserver</a>
+                        <div class="card-footer bg-transparent">
+                            <a href="{{ url_for('movie_detail', movie_id=movie.id) }}" class="btn btn-primary w-100">
+                                <i class="fas fa-ticket-alt"></i> Voir les séances
+                            </a>
                         </div>
-                        {% endfor %}
                     </div>
-                    <div class="text-center mt-3">
-                        <a href="{{ url_for('showings_today') }}" class="btn btn-outline-success">Voir toutes les séances</a>
-                    </div>
-                {% else %}
-                    <p class="text-muted">Aucune séance programmée aujourd'hui.</p>
-                {% endif %}
+                </div>
+                {% endfor %}
             </div>
-        </div>
+            {% if movies|length > 6 %}
+                <div class="text-center">
+                    <a href="{{ url_for('movies') }}" class="btn btn-outline-primary btn-lg">
+                        <i class="fas fa-film"></i> Voir tous les films ({{ movies|length }})
+                    </a>
+                </div>
+            {% endif %}
+        {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-film fa-4x text-muted mb-3"></i>
+                <h4 class="text-muted">Aucun film à l'affiche</h4>
+                <p class="text-muted">Revenez bientôt pour découvrir notre programmation !</p>
+            </div>
+        {% endif %}
     </div>
 </div>
+
+<!-- Section Séances du jour -->
+<div class="row">
+    <div class="col-12">
+        <h2 class="mb-4">
+            <i class="fas fa-calendar-day text-success"></i> Séances d'aujourd'hui
+        </h2>
+        {% if showings_today %}
+            <div class="row">
+                {% for showing in showings_today %}
+                <div class="col-lg-4 col-md-6 mb-3">
+                    <div class="card showing-card">
+                        <div class="card-body">
+                            <h6 class="card-title">{{ showing.movie_name }}</h6>
+                            <div class="showing-info">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="text-muted">
+                                        <i class="fas fa-clock"></i> {{ showing.starttime }}
+                                    </span>
+                                    <span class="badge bg-info">
+                                        <i class="fas fa-door-open"></i> {{ showing.room_name }}
+                                    </span>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="fw-bold text-success">
+                                        {{ "%.2f"|format(showing.baseprice / 100) }}€
+                                    </span>
+                                    <a href="{{ url_for('showing_seats', showing_id=showing.id) }}" 
+                                       class="btn btn-sm btn-success">
+                                        <i class="fas fa-shopping-cart"></i> Réserver
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            <div class="text-center mt-3">
+                <a href="{{ url_for('showings_today') }}" class="btn btn-outline-success">
+                    <i class="fas fa-list"></i> Voir toutes les séances du jour
+                </a>
+            </div>
+        {% else %}
+            <div class="text-center py-4">
+                <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">Aucune séance programmée aujourd'hui</h5>
+                <p class="text-muted">Consultez notre programmation pour les jours à venir.</p>
+                <a href="{{ url_for('movies') }}" class="btn btn-primary">
+                    <i class="fas fa-calendar"></i> Voir la programmation
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.movie-card {
+    border: none;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.movie-card:hover {
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);
+}
+
+.showing-card {
+    border-left: 4px solid #28a745;
+}
+
+.jumbotron {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+}
+
+.movie-details .badge {
+    font-size: 0.8rem;
+}
+
+.showing-info {
+    background-color: #f8f9fa;
+    padding: 10px;
+    border-radius: 5px;
+}
+
+@media (max-width: 768px) {
+    .movie-card, .showing-card {
+        margin-bottom: 1rem;
+    }
+    
+    .jumbotron {
+        padding: 2rem 1rem !important;
+    }
+    
+    .jumbotron h1 {
+        font-size: 2rem;
+    }
+}
+</style>
 {% endblock %}
