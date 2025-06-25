@@ -133,7 +133,7 @@ def get_movie_by_id(movie_id):
             cursor.close()
             connection.close()
 
-def add_movie(name, duration):
+def add_movie(name, duration, director=None, cast=None, synopsis=None):
     """Ajoute un nouveau film"""
     connection = get_db_connection()
     
@@ -143,14 +143,78 @@ def add_movie(name, duration):
     try:
         cursor = connection.cursor()
         
-        cursor.execute("INSERT INTO movie (name, duration) VALUES (%s, %s)", 
-                      (name, duration))
+        cursor.execute("""
+            INSERT INTO movie (name, duration, director, cast, synopsis) 
+            VALUES (%s, %s, %s, %s, %s)
+        """, (name, duration, director, cast, synopsis))
         connection.commit()
         
         return True, f"Film '{name}' ajouté avec succès"
         
     except Error as e:
         return False, f"Erreur lors de l'ajout du film: {e}"
+        
+    finally:
+        if connection.is_connected():
+            cursor.close()
+            connection.close()
+
+def update_movie(movie_id, name, duration, director, cast, synopsis):
+    """Met à jour un film"""
+    connection = get_db_connection()
+    
+    if connection is None:
+        return False, "Erreur de connexion à la base de données"
+        
+    try:
+        cursor = connection.cursor()
+        
+        cursor.execute("""
+            UPDATE movie 
+            SET name = %s, duration = %s, director = %s, cast = %s, synopsis = %s
+            WHERE id = %s
+        """, (name, duration, director, cast, synopsis, movie_id))
+        connection.commit()
+        
+        if cursor.rowcount > 0:
+            return True, f"Film '{name}' mis à jour avec succès"
+        else:
+            return False, "Film non trouvé"
+        
+    except Error as e:
+        return False, f"Erreur lors de la mise à jour du film: {e}"
+        
+    finally:
+        if connection.is_connected():
+            cursor.close()
+            connection.close()
+
+def delete_movie(movie_id):
+    """Supprime un film"""
+    connection = get_db_connection()
+    
+    if connection is None:
+        return False, "Erreur de connexion à la base de données"
+        
+    try:
+        cursor = connection.cursor()
+        
+        # Vérifier s'il y a des séances associées
+        cursor.execute("SELECT COUNT(*) as count FROM showing WHERE movie_id = %s", (movie_id,))
+        result = cursor.fetchone()
+        if result and result[0] > 0:
+            return False, "Impossible de supprimer ce film car il a des séances programmées"
+        
+        cursor.execute("DELETE FROM movie WHERE id = %s", (movie_id,))
+        connection.commit()
+        
+        if cursor.rowcount > 0:
+            return True, "Film supprimé avec succès"
+        else:
+            return False, "Film non trouvé"
+        
+    except Error as e:
+        return False, f"Erreur lors de la suppression du film: {e}"
         
     finally:
         if connection.is_connected():
@@ -174,6 +238,28 @@ def get_all_rooms():
         
     except Error as e:
         print(f"Erreur lors de la récupération des salles: {e}")
+        return None
+        
+    finally:
+        if connection.is_connected():
+            cursor.close()
+            connection.close()
+
+def get_room_by_id(room_id):
+    """Récupère une salle par son ID"""
+    connection = get_db_connection()
+    
+    if connection is None:
+        return None
+        
+    try:
+        cursor = connection.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM room WHERE id = %s", (room_id,))
+        room = cursor.fetchone()
+        return room
+        
+    except Error as e:
+        print(f"Erreur lors de la récupération de la salle: {e}")
         return None
         
     finally:
@@ -214,6 +300,69 @@ def add_room(name, nb_rows, nb_columns):
         
     except Error as e:
         return False, f"Erreur lors de l'ajout de la salle: {e}"
+        
+    finally:
+        if connection.is_connected():
+            cursor.close()
+            connection.close()
+
+def update_room(room_id, name, nb_rows, nb_columns):
+    """Met à jour une salle (nom uniquement pour éviter les conflits avec les sièges existants)"""
+    connection = get_db_connection()
+    
+    if connection is None:
+        return False, "Erreur de connexion à la base de données"
+        
+    try:
+        cursor = connection.cursor()
+        
+        # Mettre à jour uniquement le nom pour éviter les problèmes avec les sièges existants
+        cursor.execute("UPDATE room SET name = %s WHERE id = %s", (name, room_id))
+        connection.commit()
+        
+        if cursor.rowcount > 0:
+            return True, f"Salle '{name}' mise à jour avec succès"
+        else:
+            return False, "Salle non trouvée"
+        
+    except Error as e:
+        return False, f"Erreur lors de la mise à jour de la salle: {e}"
+        
+    finally:
+        if connection.is_connected():
+            cursor.close()
+            connection.close()
+
+def delete_room(room_id):
+    """Supprime une salle et tous ses sièges"""
+    connection = get_db_connection()
+    
+    if connection is None:
+        return False, "Erreur de connexion à la base de données"
+        
+    try:
+        cursor = connection.cursor()
+        
+        # Vérifier s'il y a des séances associées
+        cursor.execute("SELECT COUNT(*) as count FROM showing WHERE room_id = %s", (room_id,))
+        result = cursor.fetchone()
+        if result and result[0] > 0:
+            return False, "Impossible de supprimer cette salle car elle a des séances programmées"
+        
+        # Supprimer d'abord les sièges (à cause de la contrainte de clé étrangère)
+        cursor.execute("DELETE FROM seat WHERE room_id = %s", (room_id,))
+        
+        # Puis supprimer la salle
+        cursor.execute("DELETE FROM room WHERE id = %s", (room_id,))
+        connection.commit()
+        
+        if cursor.rowcount > 0:
+            return True, "Salle supprimée avec succès"
+        else:
+            return False, "Salle non trouvée"
+        
+    except Error as e:
+        return False, f"Erreur lors de la suppression de la salle: {e}"
         
     finally:
         if connection.is_connected():
@@ -439,209 +588,62 @@ def add_showing(date, starttime, baseprice, room_id, movie_id):
             cursor.close()
             connection.close()
 
-def get_showing_info(showing_id):
-    """Récupère les informations d'une séance avec les détails de la salle"""
-    connection = get_db_connection()
-    
-    if connection is None:
-        return None
-        
-    try:
-        cursor = connection.cursor(dictionary=True)
-        cursor.execute("""
-            SELECT s.*, r.name as room_name, r.nb_rows, r.nb_columns, m.name as movie_name
-            FROM showing s
-            JOIN room r ON s.room_id = r.id
-            JOIN movie m ON s.movie_id = m.id
-            WHERE s.id = %s
-        """, (showing_id,))
-        showing_info = cursor.fetchone()
-        return showing_info
-        
-    except Error as e:
-        print(f"Erreur lors de la récupération des informations de séance: {e}")
-        return None
-        
-    finally:
-        if connection.is_connected():
-            cursor.close()
-            connection.close()
-
-def get_showing_by_id(showing_id):
-    """Récupère une séance par son ID avec les informations du film et de la salle"""
-    connection = get_db_connection()
-    
-    if connection is None:
-        return None
-        
-    try:
-        cursor = connection.cursor(dictionary=True)
-        cursor.execute("""
-            SELECT s.*, m.name as movie, m.duration, r.name as room, r.id as room_id
-            FROM showing s
-            JOIN movie m ON s.movie_id = m.id
-            JOIN room r ON s.room_id = r.id
-            WHERE s.id = %s
-        """, (showing_id,))
-        showing = cursor.fetchone()
-        
-        if showing:
-            # Convertir le prix de centimes en euros
-            showing['price'] = showing['baseprice'] / 100
-            # S'assurer que time est un objet time
-            if isinstance(showing['starttime'], str):
-                showing['time'] = showing['starttime']
-            else:
-                showing['time'] = str(showing['starttime'])
-        
-        return showing
-        
-    except Error as e:
-        print(f"Erreur lors de la récupération de la séance: {e}")
-        return None
-        
-    finally:
-        if connection.is_connected():
-            cursor.close()
-            connection.close()
-
-def get_showing_seats_grid(showing_id):
-    """Récupère la grille de sièges pour une séance donnée"""
-    connection = get_db_connection()
-    
-    if connection is None:
-        return None
-        
-    try:
-        cursor = connection.cursor(dictionary=True)
-        
-        # Récupérer les informations de la salle
-        cursor.execute("""
-            SELECT r.* FROM room r
-            JOIN showing s ON r.id = s.room_id
-            WHERE s.id = %s
-        """, (showing_id,))
-        room = cursor.fetchone()
-        
-        if not room:
-            return None
-        
-        # Récupérer tous les sièges de la salle avec leur statut pour cette séance
-        cursor.execute("""
-            SELECT 
-                s.id, s.type, s.seat_row, s.seat_column,
-                CASE 
-                    WHEN sr.seat_id IS NOT NULL THEN 'occupied'
-                    ELSE 'available'
-                END as status
-            FROM seat s
-            LEFT JOIN seatreservation sr ON s.id = sr.seat_id AND sr.showing_id = %s
-            WHERE s.room_id = %s
-            ORDER BY s.seat_row, s.seat_column
-        """, (showing_id, room['id']))
-        seats = cursor.fetchall()
-        
-        # Créer la grille
-        grid = []
-        for row in range(1, room['nb_rows'] + 1):
-            grid_row = []
-            for col in range(1, room['nb_columns'] + 1):
-                # Trouver le siège correspondant
-                seat = next((seat for seat in seats 
-                           if seat['seat_row'] == row and seat['seat_column'] == col), None)
-                grid_row.append(seat)
-            grid.append(grid_row)
-        
-        return {
-            'room': room,
-            'grid': grid
-        }
-        
-    except Error as e:
-        print(f"Erreur lors de la récupération de la grille de sièges: {e}")
-        return None
-        
-    finally:
-        if connection.is_connected():
-            cursor.close()
-            connection.close()
-
-def book_seats(showing_id, seat_ids, user_id):
-    """Effectue une réservation pour les sièges sélectionnés"""
+def update_showing(showing_id, date, starttime, baseprice, room_id, movie_id):
+    """Met à jour une séance"""
     connection = get_db_connection()
     
     if connection is None:
         return False, "Erreur de connexion à la base de données"
         
     try:
-        cursor = connection.cursor(dictionary=True)
+        cursor = connection.cursor()
         
-        # Vérifier que tous les sièges sont disponibles
-        seat_ids_str = ','.join(map(str, seat_ids))
-        cursor.execute(f"""
-            SELECT s.id, s.seat_row, s.seat_column, s.type,
-                   se.baseprice, m.name as movie, r.name as room, se.date, se.starttime
-            FROM seat s
-            JOIN room r ON s.room_id = r.id
-            JOIN showing se ON r.id = se.room_id
-            JOIN movie m ON se.movie_id = m.id
-            LEFT JOIN seatreservation sr ON s.id = sr.seat_id AND sr.showing_id = %s
-            WHERE s.id IN ({seat_ids_str}) AND se.id = %s AND sr.seat_id IS NULL
-        """, (showing_id, showing_id))
-        
-        available_seats = cursor.fetchall()
-        
-        if len(available_seats) != len(seat_ids):
-            return False, "Certains sièges ne sont plus disponibles"
-        
-        # Calculer le prix total
-        price_per_seat = available_seats[0]['baseprice'] / 100
-        total_price = price_per_seat * len(seat_ids)
-        
-        # Créer la réservation principale
         cursor.execute("""
-            INSERT INTO booking (price, account_id, showing_id) 
-            VALUES (%s, %s, %s)
-        """, (int(total_price * 100), user_id, showing_id))
-        booking_id = cursor.lastrowid
-        
-        # Créer les clients et réservations de sièges
-        for i, seat in enumerate(available_seats):
-            # Créer un client fictif pour chaque siège (en production, vous devriez demander ces infos)
-            cursor.execute("""
-                INSERT INTO customer (firstname, lastname, age, pmr, booking_id) 
-                VALUES (%s, %s, %s, %s, %s)
-            """, (f"Client{i+1}", "Nom", 25, 0, booking_id))
-            customer_id = cursor.lastrowid
-            
-            # Créer la réservation de siège
-            cursor.execute("""
-                INSERT INTO seatreservation (customer_id, showing_id, seat_id) 
-                VALUES (%s, %s, %s)
-            """, (customer_id, showing_id, seat['id']))
-        
+            UPDATE showing 
+            SET date = %s, starttime = %s, baseprice = %s, room_id = %s, movie_id = %s
+            WHERE id = %s
+        """, (date, starttime, baseprice, room_id, movie_id, showing_id))
         connection.commit()
         
-        # Préparer les données de retour
-        booking_data = {
-            'movie': available_seats[0]['movie'],
-            'room': available_seats[0]['room'],
-            'date': available_seats[0]['date'],
-            'time': str(available_seats[0]['starttime']),
-            'seats': [{'row': seat['seat_row'], 'col': seat['seat_column'], 'type': seat['type']} 
-                     for seat in available_seats],
-            'price_per_seat': price_per_seat,
-            'total_price': total_price
-        }
-        
-        return True, {
-            'booking_id': booking_id,
-            'booking': booking_data
-        }
+        if cursor.rowcount > 0:
+            return True, "Séance mise à jour avec succès"
+        else:
+            return False, "Séance non trouvée"
         
     except Error as e:
-        print(f"Erreur lors de la réservation: {e}")
-        return False, f"Erreur lors de la réservation: {e}"
+        return False, f"Erreur lors de la mise à jour de la séance: {e}"
+        
+    finally:
+        if connection.is_connected():
+            cursor.close()
+            connection.close()
+
+def delete_showing(showing_id):
+    """Supprime une séance"""
+    connection = get_db_connection()
+    
+    if connection is None:
+        return False, "Erreur de connexion à la base de données"
+        
+    try:
+        cursor = connection.cursor()
+        
+        # Vérifier s'il y a des réservations associées
+        cursor.execute("SELECT COUNT(*) as count FROM seatreservation WHERE showing_id = %s", (showing_id,))
+        result = cursor.fetchone()
+        if result and result[0] > 0:
+            return False, "Impossible de supprimer cette séance car elle a des réservations"
+        
+        cursor.execute("DELETE FROM showing WHERE id = %s", (showing_id,))
+        connection.commit()
+        
+        if cursor.rowcount > 0:
+            return True, "Séance supprimée avec succès"
+        else:
+            return False, "Séance non trouvée"
+        
+    except Error as e:
+        return False, f"Erreur lors de la suppression de la séance: {e}"
         
     finally:
         if connection.is_connected():

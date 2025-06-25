@@ -18,9 +18,18 @@
                 <div class="card-body">
                     <h5 class="card-title">{{ movie.name }}</h5>
                     <p class="card-text">
-                        <strong>Durée:</strong> {{ movie.duration }} minutes
+                        <strong>Durée:</strong> {{ movie.duration }} minutes<br>
+                        {% if movie.director %}
+                        <strong>Réalisateur:</strong> {{ movie.director }}<br>
+                        {% endif %}
+                        {% if movie.cast %}
+                        <strong>Avec:</strong> {{ movie.cast }}<br>
+                        {% endif %}
+                        {% if movie.synopsis %}
+                        <small class="text-muted">{{ movie.synopsis[:100] }}{% if movie.synopsis|length > 100 %}...{% endif %}</small>
+                        {% endif %}
                     </p>
-                    <div class="d-grid">
+                    <div class="d-grid mt-auto">
                         <a href="{{ url_for('movie_detail', movie_id=movie.id) }}" class="btn btn-primary">
                             Voir les séances
                         </a>

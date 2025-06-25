@@ -304,6 +304,9 @@ def add_movie():
     """Ajouter un film"""
     name = request.form.get('name')
     duration = request.form.get('duration')
+    director = request.form.get('director')
+    cast = request.form.get('cast')
+    synopsis = request.form.get('synopsis')
     
     if not name or not duration:
         flash('Nom et durée du film requis', 'error')
@@ -311,11 +314,40 @@ def add_movie():
     
     try:
         duration = int(duration)
-        success, message = modele.add_movie(name, duration)
+        success, message = modele.add_movie(name, duration, director, cast, synopsis)
         flash(message, 'success' if success else 'error')
     except ValueError:
         flash('La durée doit être un nombre', 'error')
     
+    return redirect(url_for('admin_dashboard'))
+
+@app.route('/admin/movie/<int:movie_id>/update', methods=['POST'])
+def update_movie(movie_id):
+    """Mettre à jour un film"""
+    name = request.form.get('name')
+    duration = request.form.get('duration')
+    director = request.form.get('director')
+    cast = request.form.get('cast')
+    synopsis = request.form.get('synopsis')
+    
+    if not name or not duration:
+        flash('Nom et durée du film requis', 'error')
+        return redirect(url_for('admin_dashboard'))
+    
+    try:
+        duration = int(duration)
+        success, message = modele.update_movie(movie_id, name, duration, director, cast, synopsis)
+        flash(message, 'success' if success else 'error')
+    except ValueError:
+        flash('La durée doit être un nombre', 'error')
+    
+    return redirect(url_for('admin_dashboard'))
+
+@app.route('/admin/movie/<int:movie_id>/delete', methods=['POST'])
+def delete_movie(movie_id):
+    """Supprimer un film"""
+    success, message = modele.delete_movie(movie_id)
+    flash(message, 'success' if success else 'error')
     return redirect(url_for('admin_dashboard'))
 
 @app.route('/admin/room', methods=['POST'])
@@ -337,6 +369,26 @@ def add_room():
     except ValueError:
         flash('Le nombre de rangées et colonnes doit être un nombre', 'error')
     
+    return redirect(url_for('admin_dashboard'))
+
+@app.route('/admin/room/<int:room_id>/update', methods=['POST'])
+def update_room(room_id):
+    """Mettre à jour une salle"""
+    name = request.form.get('name')
+    
+    if not name:
+        flash('Nom de la salle requis', 'error')
+        return redirect(url_for('admin_dashboard'))
+    
+    success, message = modele.update_room(room_id, name, 0, 0)  # Seul le nom peut être modifié
+    flash(message, 'success' if success else 'error')
+    return redirect(url_for('admin_dashboard'))
+
+@app.route('/admin/room/<int:room_id>/delete', methods=['POST'])
+def delete_room(room_id):
+    """Supprimer une salle"""
+    success, message = modele.delete_room(room_id)
+    flash(message, 'success' if success else 'error')
     return redirect(url_for('admin_dashboard'))
 
 @app.route('/admin/showing', methods=['POST'])
@@ -362,6 +414,38 @@ def add_showing():
     except ValueError:
         flash('Données invalides', 'error')
     
+    return redirect(url_for('admin_dashboard'))
+
+@app.route('/admin/showing/<int:showing_id>/update', methods=['POST'])
+def update_showing(showing_id):
+    """Mettre à jour une séance"""
+    date = request.form.get('date')
+    starttime = request.form.get('starttime')
+    baseprice = request.form.get('baseprice')
+    room_id = request.form.get('room_id')
+    movie_id = request.form.get('movie_id')
+    
+    if not all([date, starttime, baseprice, room_id, movie_id]):
+        flash('Tous les champs sont requis', 'error')
+        return redirect(url_for('admin_dashboard'))
+    
+    try:
+        baseprice = int(float(baseprice) * 100)  # Convertir euros en centimes
+        room_id = int(room_id)
+        movie_id = int(movie_id)
+        
+        success, message = modele.update_showing(showing_id, date, starttime, baseprice, room_id, movie_id)
+        flash(message, 'success' if success else 'error')
+    except ValueError:
+        flash('Données invalides', 'error')
+    
+    return redirect(url_for('admin_dashboard'))
+
+@app.route('/admin/showing/<int:showing_id>/delete', methods=['POST'])
+def delete_showing(showing_id):
+    """Supprimer une séance"""
+    success, message = modele.delete_showing(showing_id)
+    flash(message, 'success' if success else 'error')
     return redirect(url_for('admin_dashboard'))
 
 # Point d'entrée du programme

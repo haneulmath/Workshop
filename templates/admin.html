@@ -142,15 +142,28 @@
                     </div>
                     <div class="card-body">
                         <form method="POST" action="/admin/movie" class="mb-3">
-                            <div class="row g-2">
+                            <div class="row g-2 mb-2">
                                 <div class="col-md-6">
                                     <input type="text" class="form-control" name="name" placeholder="Nom du film" required>
                                 </div>
-                                <div class="col-md-4">
+                                <div class="col-md-6">
                                     <input type="number" class="form-control" name="duration" placeholder="Durée (min)" required>
                                 </div>
+                            </div>
+                            <div class="row g-2 mb-2">
+                                <div class="col-md-6">
+                                    <input type="text" class="form-control" name="director" placeholder="Réalisateur">
+                                </div>
+                                <div class="col-md-6">
+                                    <input type="text" class="form-control" name="cast" placeholder="Acteurs principaux">
+                                </div>
+                            </div>
+                            <div class="row g-2 mb-2">
+                                <div class="col-md-10">
+                                    <textarea class="form-control" name="synopsis" placeholder="Synopsis" rows="2"></textarea>
+                                </div>
                                 <div class="col-md-2">
-                                    <button type="submit" class="btn btn-add w-100">+</button>
+                                    <button type="submit" class="btn btn-add w-100 h-100">Ajouter</button>
                                 </div>
                             </div>
                         </form>
@@ -162,6 +175,8 @@
                                         <th>ID</th>
                                         <th>Nom</th>
                                         <th>Durée</th>
+                                        <th>Réalisateur</th>
+                                        <th>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -171,11 +186,18 @@
                                             <td>{{ movie.id }}</td>
                                             <td>{{ movie.name }}</td>
                                             <td>{{ movie.duration }} min</td>
+                                            <td>{{ movie.director or '-' }}</td>
+                                            <td>
+                                                <button type="button" class="btn btn-sm btn-warning me-1" data-bs-toggle="modal" data-bs-target="#editMovieModal{{ movie.id }}">✏️</button>
+                                                <form method="POST" action="/admin/movie/{{ movie.id }}/delete" style="display: inline;">
+                                                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce film ?')">🗑️</button>
+                                                </form>
+                                            </td>
                                         </tr>
                                         {% endfor %}
                                     {% else %}
                                         <tr>
-                                            <td colspan="3" class="text-center text-muted">Aucun film</td>
+                                            <td colspan="5" class="text-center text-muted">Aucun film</td>
                                         </tr>
                                     {% endif %}
                                 </tbody>
@@ -218,6 +240,7 @@
                                         <th>Rangées</th>
                                         <th>Colonnes</th>
                                         <th>Total</th>
+                                        <th>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -229,11 +252,17 @@
                                             <td>{{ room.nb_rows }}</td>
                                             <td>{{ room.nb_columns }}</td>
                                             <td>{{ room.nb_rows * room.nb_columns }}</td>
+                                            <td>
+                                                <button type="button" class="btn btn-sm btn-warning me-1" data-bs-toggle="modal" data-bs-target="#editRoomModal{{ room.id }}">✏️</button>
+                                                <form method="POST" action="/admin/room/{{ room.id }}/delete" style="display: inline;">
+                                                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Êtes-vous sûr de vouloir supprimer cette salle ?')">🗑️</button>
+                                                </form>
+                                            </td>
                                         </tr>
                                         {% endfor %}
                                     {% else %}
                                         <tr>
-                                            <td colspan="5" class="text-center text-muted">Aucune salle</td>
+                                            <td colspan="6" class="text-center text-muted">Aucune salle</td>
                                         </tr>
                                     {% endif %}
                                 </tbody>
@@ -305,6 +334,7 @@
                                         <th>Film</th>
                                         <th>Salle</th>
                                         <th>Prix</th>
+                                        <th>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -317,11 +347,17 @@
                                             <td>{{ showing.movie_name }}</td>
                                             <td>{{ showing.room_name }}</td>
                                             <td>{{ "%.2f"|format(showing.baseprice / 100) }}€</td>
+                                            <td>
+                                                <button type="button" class="btn btn-sm btn-warning me-1" data-bs-toggle="modal" data-bs-target="#editShowingModal{{ showing.id }}">✏️</button>
+                                                <form method="POST" action="/admin/showing/{{ showing.id }}/delete" style="display: inline;">
+                                                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Êtes-vous sûr de vouloir supprimer cette séance ?')">🗑️</button>
+                                                </form>
+                                            </td>
                                         </tr>
                                         {% endfor %}
                                     {% else %}
                                         <tr>
-                                            <td colspan="6" class="text-center text-muted">Aucune séance</td>
+                                            <td colspan="7" class="text-center text-muted">Aucune séance</td>
                                         </tr>
                                     {% endif %}
                                 </tbody>
@@ -500,5 +536,151 @@
             }
         });
     </script>
+
+    <!-- Modales de modification -->
+    
+    <!-- Modales pour les films -->
+    {% if movies %}
+        {% for movie in movies %}
+        <div class="modal fade" id="editMovieModal{{ movie.id }}" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Modifier le film: {{ movie.name }}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <form method="POST" action="/admin/movie/{{ movie.id }}/update">
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label class="form-label">Nom</label>
+                                <input type="text" class="form-control" name="name" value="{{ movie.name }}" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Durée (minutes)</label>
+                                <input type="number" class="form-control" name="duration" value="{{ movie.duration }}" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Réalisateur</label>
+                                <input type="text" class="form-control" name="director" value="{{ movie.director or '' }}">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Acteurs principaux</label>
+                                <input type="text" class="form-control" name="cast" value="{{ movie.cast or '' }}">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Synopsis</label>
+                                <textarea class="form-control" name="synopsis" rows="3">{{ movie.synopsis or '' }}</textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                            <button type="submit" class="btn btn-primary">Enregistrer</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Modales pour les salles -->
+    {% if rooms %}
+        {% for room in rooms %}
+        <div class="modal fade" id="editRoomModal{{ room.id }}" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Modifier la salle: {{ room.name }}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <form method="POST" action="/admin/room/{{ room.id }}/update">
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label class="form-label">Nom</label>
+                                <input type="text" class="form-control" name="name" value="{{ room.name }}" required>
+                            </div>
+                            <div class="alert alert-info">
+                                <small>Note: Les dimensions de la salle ({{ room.nb_rows }} rangées × {{ room.nb_columns }} colonnes) ne peuvent pas être modifiées pour préserver l'intégrité des sièges existants.</small>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                            <button type="submit" class="btn btn-primary">Enregistrer</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Modales pour les séances -->
+    {% if showings %}
+        {% for showing in showings %}
+        <div class="modal fade" id="editShowingModal{{ showing.id }}" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Modifier la séance: {{ showing.movie_name }}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <form method="POST" action="/admin/showing/{{ showing.id }}/update">
+                        <div class="modal-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Date</label>
+                                        <input type="date" class="form-control" name="date" value="{{ showing.date.strftime('%Y-%m-%d') if showing.date else '' }}" required>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Heure</label>
+                                        <input type="time" class="form-control" name="starttime" value="{{ showing.starttime }}" required>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Prix (€)</label>
+                                <input type="number" step="0.01" class="form-control" name="baseprice" value="{{ "%.2f"|format(showing.baseprice / 100) }}" required>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Salle</label>
+                                        <select class="form-select" name="room_id" required>
+                                            {% if rooms %}
+                                                {% for room in rooms %}
+                                                <option value="{{ room.id }}" {% if room.id == showing.room_id %}selected{% endif %}>{{ room.name }}</option>
+                                                {% endfor %}
+                                            {% endif %}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Film</label>
+                                        <select class="form-select" name="movie_id" required>
+                                            {% if movies %}
+                                                {% for movie in movies %}
+                                                <option value="{{ movie.id }}" {% if movie.id == showing.movie_id %}selected{% endif %}>{{ movie.name }}</option>
+                                                {% endfor %}
+                                            {% endif %}
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                            <button type="submit" class="btn btn-primary">Enregistrer</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    {% endif %}
+
 </body>
 </html>
