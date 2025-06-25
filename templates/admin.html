@@ -252,7 +252,7 @@
                         <h5 class="mb-0">🎞️ Gestion des Séances</h5>
                     </div>
                     <div class="card-body">
-                        <form method="POST" action="/admin/seance" class="mb-4">
+                        <form method="POST" action="/admin/showing" class="mb-4">
                             <div class="row g-3">
                                 <div class="col-md-2">
                                     <label class="form-label">Date</label>
@@ -308,15 +308,15 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {% if seances %}
-                                        {% for seance in seances %}
+                                    {% if showings %}
+                                        {% for showing in showings %}
                                         <tr>
-                                            <td>{{ seance.id }}</td>
-                                            <td>{{ seance.date.strftime('%d/%m/%Y') if seance.date else '' }}</td>
-                                            <td>{{ seance.starttime }}</td>
-                                            <td>{{ seance.movie_name }}</td>
-                                            <td>{{ seance.room_name }}</td>
-                                            <td>{{ "%.2f"|format(seance.baseprice / 100) }}€</td>
+                                            <td>{{ showing.id }}</td>
+                                            <td>{{ showing.date.strftime('%d/%m/%Y') if showing.date else '' }}</td>
+                                            <td>{{ showing.starttime }}</td>
+                                            <td>{{ showing.movie_name }}</td>
+                                            <td>{{ showing.room_name }}</td>
+                                            <td>{{ "%.2f"|format(showing.baseprice / 100) }}€</td>
                                         </tr>
                                         {% endfor %}
                                     {% else %}

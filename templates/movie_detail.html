@@ -25,7 +25,7 @@
                 <p><strong>Durée:</strong> {{ movie.duration }} minutes</p>
                 
                 <h4>Séances disponibles</h4>
-                {% if seances %}
+                {% if showings %}
                     <div class="table-responsive">
                         <table class="table table-striped">
                             <thead>
@@ -38,14 +38,14 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for seance in seances %}
+                                {% for showing in showings %}
                                 <tr>
-                                    <td>{{ seance.date.strftime('%d/%m/%Y') }}</td>
-                                    <td>{{ seance.starttime }}</td>
-                                    <td>{{ seance.room_name }}</td>
-                                    <td>{{ "%.2f"|format(seance.baseprice / 100) }}€</td>
+                                    <td>{{ showing.date.strftime('%d/%m/%Y') }}</td>
+                                    <td>{{ showing.starttime }}</td>
+                                    <td>{{ showing.room_name }}</td>
+                                    <td>{{ "%.2f"|format(showing.baseprice / 100) }}€</td>
                                     <td>
-                                        <a href="{{ url_for('seance_seats', seance_id=seance.id) }}" class="btn btn-sm btn-success">
+                                        <a href="{{ url_for('showing_seats', showing_id=showing.id) }}" class="btn btn-sm btn-success">
                                             Réserver
                                         </a>
                                     </td>
@@ -71,7 +71,7 @@
             <div class="card-body">
                 <p><strong>Titre:</strong> {{ movie.name }}</p>
                 <p><strong>Durée:</strong> {{ movie.duration }} minutes</p>
-                <p><strong>Nombre de séances:</strong> {{ seances|length if seances else 0 }}</p>
+                <p><strong>Nombre de séances:</strong> {{ showings|length if showings else 0 }}</p>
             </div>
         </div>
     </div>

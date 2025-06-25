@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Sélection des places - {{ seance.movie }}{% endblock %}
+{% block title %}Sélection des places - {{ showing.movie }}{% endblock %}
 
 {% block content %}
 <div class="container mt-4">
@@ -11,19 +11,19 @@
                 <div class="card-body">
                     <div class="row">
                         <div class="col-md-8">
-                            <h2 class="card-title">{{ seance.movie }}</h2>
+                            <h2 class="card-title">{{ showing.movie }}</h2>
                             <p class="text-muted mb-1">
-                                <i class="fas fa-calendar"></i> {{ seance.date.strftime('%d/%m/%Y') }}
-                                <i class="fas fa-clock ms-3"></i> {{ seance.time }}
+                                <i class="fas fa-calendar"></i> {{ showing.date.strftime('%d/%m/%Y') }}
+                                <i class="fas fa-clock ms-3"></i> {{ showing.time }}
                             </p>
                             <p class="text-muted mb-0">
-                                <i class="fas fa-door-open"></i> Salle {{ seance.room }}
+                                <i class="fas fa-door-open"></i> Salle {{ showing.room }}
                             </p>
                         </div>
                         <div class="col-md-4 text-end">
                             <div class="price-info">
                                 <span class="text-muted">Prix par place:</span>
-                                <h4 class="text-primary mb-0">{{ "%.2f"|format(seance.price) }}€</h4>
+                                <h4 class="text-primary mb-0">{{ "%.2f"|format(showing.price) }}€</h4>
                             </div>
                         </div>
                     </div>
@@ -110,7 +110,7 @@
                         </div>
                         <div class="col-md-3">
                             <form method="POST" action="{{ url_for('book_seats') }}" id="booking-form">
-                                <input type="hidden" name="seance_id" value="{{ seance.id }}">
+                                <input type="hidden" name="showing_id" value="{{ showing.id }}">
                                 <input type="hidden" name="selected_seats" id="selected-seats-input">
                                 <button type="submit" class="btn btn-success w-100" id="confirm-booking">
                                     Confirmer la réservation
@@ -123,7 +123,7 @@
 
             <!-- Boutons de navigation -->
             <div class="d-flex justify-content-between">
-                <a href="{{ url_for('movie_detail', movie_id=seance.movie_id) }}" class="btn btn-secondary">
+                <a href="{{ url_for('movie_detail', movie_id=showing.movie_id) }}" class="btn btn-secondary">
                     <i class="fas fa-arrow-left"></i> Retour au film
                 </a>
                 <a href="{{ url_for('home') }}" class="btn btn-outline-primary">
@@ -302,7 +302,7 @@
 
 <script>
 let selectedSeats = [];
-const seatPrice = parseFloat('{{ seance.price }}');
+const seatPrice = parseFloat('{{ showing.price }}');
 
 // Initialiser la grille CSS
 document.addEventListener('DOMContentLoaded', function() {

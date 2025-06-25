@@ -18,7 +18,9 @@ def index():
 @app.route('/home')
 def home():
     """Page d'accueil principale"""
-    return render_template('home.html')
+    # Récupérer les séances d'aujourd'hui pour l'aperçu
+    showings_today = modele.get_showings_today()
+    return render_template('home.html', showings_today=showings_today)
 
 @app.route('/movies')
 def movies():
@@ -37,65 +39,65 @@ def movie_detail(movie_id):
         flash('Film non trouvé', 'error')
         return redirect(url_for('movies'))
     
-    seances = modele.get_seances_by_movie(movie_id)
-    if seances is None:
+    showings = modele.get_showings_by_movie(movie_id)
+    if showings is None:
         flash('Erreur lors de la récupération des séances', 'error')
         return redirect(url_for('movies'))
     
-    return render_template('movie_detail.html', movie=movie, seances=seances)
+    return render_template('movie_detail.html', movie=movie, showings=showings)
 
-@app.route('/seances/today')
-def seances_today():
+@app.route('/showings/today')
+def showings_today():
     """Page des séances d'aujourd'hui"""
-    seances = modele.get_seances_today()
-    if seances is None:
+    showings = modele.get_showings_today()
+    if showings is None:
         flash('Erreur lors de la récupération des séances', 'error')
         return redirect(url_for('home'))
-    return render_template('seances_today.html', seances=seances)
+    return render_template('showings_today.html', showings=showings)
 
-@app.route('/seance/<int:seance_id>/seats')
-def seance_seats(seance_id):
+@app.route('/showing/<int:showing_id>/seats')
+def showing_seats(showing_id):
     """Page de sélection des sièges pour une séance"""
     # Récupérer les informations de la séance
-    seance = modele.get_seance_by_id(seance_id)
-    if not seance:
+    showing = modele.get_showing_by_id(showing_id)
+    if not showing:
         flash('Séance non trouvée', 'error')
-        return redirect(url_for('seances_today'))
+        return redirect(url_for('showings_today'))
     
     # Récupérer les informations de la salle et la grille de sièges
-    seats_data = modele.get_seance_seats_grid(seance_id)
+    seats_data = modele.get_showing_seats_grid(showing_id)
     if not seats_data:
         flash('Erreur lors de la récupération des sièges', 'error')
-        return redirect(url_for('seances_today'))
+        return redirect(url_for('showings_today'))
     
     room = seats_data['room']
     grid = seats_data['grid']
     
-    return render_template('seance_seats.html', 
-                         seance=seance, 
+    return render_template('showing_seats.html', 
+                         showing=showing, 
                          room=room, 
                          grid=grid)
 
 @app.route('/booking', methods=['POST'])
 def book_seats():
     """Confirmer une réservation"""
-    seance_id = request.form.get('seance_id')
+    showing_id = request.form.get('showing_id')
     selected_seats = request.form.get('selected_seats')
     
-    if not seance_id or not selected_seats:
+    if not showing_id or not selected_seats:
         flash('Données de réservation manquantes', 'error')
-        return redirect(url_for('seances_today'))
+        return redirect(url_for('showings_today'))
     
     try:
-        seance_id = int(seance_id)
+        showing_id = int(showing_id)
         seat_ids = json.loads(selected_seats)
         
         if not seat_ids:
             flash('Aucune place sélectionnée', 'error')
-            return redirect(url_for('seance_seats', seance_id=seance_id))
+            return redirect(url_for('showing_seats', showing_id=showing_id))
         
         # Effectuer la réservation
-        success, result = modele.book_seats(seance_id, seat_ids, session.get('user_id', 1))
+        success, result = modele.book_seats(showing_id, seat_ids, session.get('user_id', 1))
         
         if success:
             return render_template('booking_confirmation.html', 
@@ -106,11 +108,11 @@ def book_seats():
             return render_template('booking_confirmation.html', 
                                  success=False, 
                                  error_message=result,
-                                 seance_id=seance_id)
+                                 showing_id=showing_id)
     
     except (ValueError, json.JSONDecodeError) as e:
         flash('Données de réservation invalides', 'error')
-        return redirect(url_for('seance_seats', seance_id=seance_id))
+        return redirect(url_for('showing_seats', showing_id=showing_id))
 
 # ===== ROUTES D'AUTHENTIFICATION =====
 
@@ -169,57 +171,57 @@ def get_movies():
         return jsonify({'error': 'Erreur lors de la récupération des films'}), 500
     return jsonify(movies)
 
-@app.route('/api/movie/<int:movie_id>/seances')
-def get_movie_seances(movie_id):
+@app.route('/api/movie/<int:movie_id>/showings')
+def get_movie_showings(movie_id):
     """API pour récupérer toutes les séances d'un film spécifique"""
-    seances = modele.get_seances_by_movie(movie_id)
-    if seances is None:
+    showings = modele.get_showings_by_movie(movie_id)
+    if showings is None:
         return jsonify({'error': 'Erreur lors de la récupération des séances'}), 500
     
     # Formater les données pour le frontend
-    formatted_seances = []
-    for seance in seances:
-        formatted_seances.append({
-            'id': seance['id'],
-            'date': seance['date'].strftime('%Y-%m-%d'),
-            'time': str(seance['starttime']),
-            'room': seance['room_name'],
-            'price': seance['baseprice'] / 100,  # Convertir centimes en euros
-            'movie_name': seance['movie_name']
+    formatted_showings = []
+    for showing in showings:
+        formatted_showings.append({
+            'id': showing['id'],
+            'date': showing['date'].strftime('%Y-%m-%d'),
+            'time': str(showing['starttime']),
+            'room': showing['room_name'],
+            'price': showing['baseprice'] / 100,  # Convertir centimes en euros
+            'movie_name': showing['movie_name']
         })
     
-    return jsonify(formatted_seances)
+    return jsonify(formatted_showings)
 
-@app.route('/api/seances/today')
-def get_seances_today():
+@app.route('/api/showings/today')
+def get_showings_today():
     """API pour récupérer les séances d'aujourd'hui"""
-    seances = modele.get_seances_today()
-    if seances is None:
+    showings = modele.get_showings_today()
+    if showings is None:
         return jsonify({'error': 'Erreur lors de la récupération des séances'}), 500
     
     # Formater les données pour le frontend
-    formatted_seances = []
-    for seance in seances:
-        formatted_seances.append({
-            'id': seance['id'],
-            'movie': seance['movie_name'],
-            'time': str(seance['starttime']),
-            'room': seance['room_name'],
-            'price': seance['baseprice'] / 100  # Convertir centimes en euros
+    formatted_showings = []
+    for showing in showings:
+        formatted_showings.append({
+            'id': showing['id'],
+            'movie': showing['movie_name'],
+            'time': str(showing['starttime']),
+            'room': showing['room_name'],
+            'price': showing['baseprice'] / 100  # Convertir centimes en euros
         })
     
-    return jsonify(formatted_seances)
+    return jsonify(formatted_showings)
 
-@app.route('/api/seance/<int:seance_id>/seats')
-def get_seance_seats(seance_id):
+@app.route('/api/showing/<int:showing_id>/seats')
+def get_showing_seats(showing_id):
     """API pour récupérer les sièges d'une séance avec la même structure que l'admin"""
-    seats = modele.get_seats_for_seance(seance_id)
+    seats = modele.get_seats_for_showing(showing_id)
     if seats is None:
         return jsonify({'error': 'Erreur lors de la récupération des sièges'}), 500
     
     # Récupérer les informations de la salle pour cette séance
-    seance_info = modele.get_seance_info(seance_id)
-    if seance_info is None:
+    showing_info = modele.get_showing_info(showing_id)
+    if showing_info is None:
         return jsonify({'error': 'Séance non trouvée'}), 404
     
     # Organiser les sièges en grille comme l'interface d'administration
@@ -236,10 +238,10 @@ def get_seance_seats(seance_id):
     
     return jsonify({
         'room': {
-            'id': seance_info['room_id'],
-            'name': seance_info['room_name'],
-            'nb_rows': seance_info['nb_rows'],
-            'nb_columns': seance_info['nb_columns']
+            'id': showing_info['room_id'],
+            'name': showing_info['room_name'],
+            'nb_rows': showing_info['nb_rows'],
+            'nb_columns': showing_info['nb_columns']
         },
         'grid': grid
     })
@@ -252,14 +254,14 @@ def create_booking():
     if 'user_id' not in session:
         return jsonify({'success': False, 'message': 'Vous devez être connecté'}), 401
     
-    seance_id = data.get('seance_id')
+    showing_id = data.get('showing_id')
     spectators = data.get('spectators')
     
-    if not seance_id or not spectators:
+    if not showing_id or not spectators:
         return jsonify({'success': False, 'message': 'Données manquantes'}), 400
     
     # Créer la réservation
-    success, message = modele.create_booking(session['user_id'], seance_id, spectators)
+    success, message = modele.create_booking(session['user_id'], showing_id, spectators)
     
     return jsonify({'success': success, 'message': message})
 
@@ -293,9 +295,9 @@ def admin_dashboard():
     """Tableau de bord administrateur"""
     movies = modele.get_all_movies()
     rooms = modele.get_all_rooms()
-    seances = modele.get_all_seances()
+    showings = modele.get_all_showings()
     
-    return render_template('admin.html', movies=movies, rooms=rooms, seances=seances)
+    return render_template('admin.html', movies=movies, rooms=rooms, showings=showings)
 
 @app.route('/admin/movie', methods=['POST'])
 def add_movie():
@@ -337,8 +339,8 @@ def add_room():
     
     return redirect(url_for('admin_dashboard'))
 
-@app.route('/admin/seance', methods=['POST'])
-def add_seance():
+@app.route('/admin/showing', methods=['POST'])
+def add_showing():
     """Ajouter une séance"""
     date = request.form.get('date')
     starttime = request.form.get('starttime')
@@ -355,7 +357,7 @@ def add_seance():
         room_id = int(room_id)
         movie_id = int(movie_id)
         
-        success, message = modele.add_seance(date, starttime, baseprice, room_id, movie_id)
+        success, message = modele.add_showing(date, starttime, baseprice, room_id, movie_id)
         flash(message, 'success' if success else 'error')
     except ValueError:
         flash('Données invalides', 'error')

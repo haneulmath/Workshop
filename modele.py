@@ -326,7 +326,7 @@ def get_seat_by_position(room_id, seat_row, seat_column):
 
 # ===== FONCTIONS POUR LES SÉANCES =====
 
-def get_all_seances():
+def get_all_showings():
     """Récupère toutes les séances avec les informations des films et salles"""
     connection = get_db_connection()
     
@@ -337,13 +337,13 @@ def get_all_seances():
         cursor = connection.cursor(dictionary=True)
         cursor.execute("""
             SELECT s.*, m.name as movie_name, m.duration, r.name as room_name
-            FROM seance s
+            FROM showing s
             JOIN movie m ON s.movie_id = m.id
             JOIN room r ON s.room_id = r.id
             ORDER BY s.date, s.starttime
         """)
-        seances = cursor.fetchall()
-        return seances
+        showings = cursor.fetchall()
+        return showings
         
     except Error as e:
         print(f"Erreur lors de la récupération des séances: {e}")
@@ -354,7 +354,7 @@ def get_all_seances():
             cursor.close()
             connection.close()
 
-def get_seances_today():
+def get_showings_today():
     """Récupère les séances d'aujourd'hui"""
     connection = get_db_connection()
     
@@ -366,14 +366,14 @@ def get_seances_today():
         today = datetime.now().strftime('%Y-%m-%d')
         cursor.execute("""
             SELECT s.*, m.name as movie_name, m.duration, r.name as room_name
-            FROM seance s
+            FROM showing s
             JOIN movie m ON s.movie_id = m.id
             JOIN room r ON s.room_id = r.id
             WHERE DATE(s.date) = %s
             ORDER BY s.starttime
         """, (today,))
-        seances = cursor.fetchall()
-        return seances
+        showings = cursor.fetchall()
+        return showings
         
     except Error as e:
         print(f"Erreur lors de la récupération des séances: {e}")
@@ -384,7 +384,7 @@ def get_seances_today():
             cursor.close()
             connection.close()
 
-def get_seances_by_movie(movie_id):
+def get_showings_by_movie(movie_id):
     """Récupère toutes les séances d'un film spécifique"""
     connection = get_db_connection()
     
@@ -395,14 +395,14 @@ def get_seances_by_movie(movie_id):
         cursor = connection.cursor(dictionary=True)
         cursor.execute("""
             SELECT s.*, m.name as movie_name, m.duration, r.name as room_name
-            FROM seance s
+            FROM showing s
             JOIN movie m ON s.movie_id = m.id
             JOIN room r ON s.room_id = r.id
             WHERE s.movie_id = %s
             ORDER BY s.date, s.starttime
         """, (movie_id,))
-        seances = cursor.fetchall()
-        return seances
+        showings = cursor.fetchall()
+        return showings
         
     except Error as e:
         print(f"Erreur lors de la récupération des séances: {e}")
@@ -413,7 +413,7 @@ def get_seances_by_movie(movie_id):
             cursor.close()
             connection.close()
 
-def add_seance(date, starttime, baseprice, room_id, movie_id):
+def add_showing(date, starttime, baseprice, room_id, movie_id):
     """Ajoute une nouvelle séance"""
     connection = get_db_connection()
     
@@ -424,7 +424,7 @@ def add_seance(date, starttime, baseprice, room_id, movie_id):
         cursor = connection.cursor()
         
         cursor.execute("""
-            INSERT INTO seance (date, starttime, baseprice, room_id, movie_id) 
+            INSERT INTO showing (date, starttime, baseprice, room_id, movie_id) 
             VALUES (%s, %s, %s, %s, %s)
         """, (date, starttime, baseprice, room_id, movie_id))
         connection.commit()
@@ -439,7 +439,7 @@ def add_seance(date, starttime, baseprice, room_id, movie_id):
             cursor.close()
             connection.close()
 
-def get_seance_info(seance_id):
+def get_showing_info(showing_id):
     """Récupère les informations d'une séance avec les détails de la salle"""
     connection = get_db_connection()
     
@@ -450,13 +450,13 @@ def get_seance_info(seance_id):
         cursor = connection.cursor(dictionary=True)
         cursor.execute("""
             SELECT s.*, r.name as room_name, r.nb_rows, r.nb_columns, m.name as movie_name
-            FROM seance s
+            FROM showing s
             JOIN room r ON s.room_id = r.id
             JOIN movie m ON s.movie_id = m.id
             WHERE s.id = %s
-        """, (seance_id,))
-        seance_info = cursor.fetchone()
-        return seance_info
+        """, (showing_id,))
+        showing_info = cursor.fetchone()
+        return showing_info
         
     except Error as e:
         print(f"Erreur lors de la récupération des informations de séance: {e}")
@@ -467,7 +467,7 @@ def get_seance_info(seance_id):
             cursor.close()
             connection.close()
 
-def get_seance_by_id(seance_id):
+def get_showing_by_id(showing_id):
     """Récupère une séance par son ID avec les informations du film et de la salle"""
     connection = get_db_connection()
     
@@ -478,23 +478,23 @@ def get_seance_by_id(seance_id):
         cursor = connection.cursor(dictionary=True)
         cursor.execute("""
             SELECT s.*, m.name as movie, m.duration, r.name as room, r.id as room_id
-            FROM seance s
+            FROM showing s
             JOIN movie m ON s.movie_id = m.id
             JOIN room r ON s.room_id = r.id
             WHERE s.id = %s
-        """, (seance_id,))
-        seance = cursor.fetchone()
+        """, (showing_id,))
+        showing = cursor.fetchone()
         
-        if seance:
+        if showing:
             # Convertir le prix de centimes en euros
-            seance['price'] = seance['baseprice'] / 100
+            showing['price'] = showing['baseprice'] / 100
             # S'assurer que time est un objet time
-            if isinstance(seance['starttime'], str):
-                seance['time'] = seance['starttime']
+            if isinstance(showing['starttime'], str):
+                showing['time'] = showing['starttime']
             else:
-                seance['time'] = str(seance['starttime'])
+                showing['time'] = str(showing['starttime'])
         
-        return seance
+        return showing
         
     except Error as e:
         print(f"Erreur lors de la récupération de la séance: {e}")
@@ -505,7 +505,7 @@ def get_seance_by_id(seance_id):
             cursor.close()
             connection.close()
 
-def get_seance_seats_grid(seance_id):
+def get_showing_seats_grid(showing_id):
     """Récupère la grille de sièges pour une séance donnée"""
     connection = get_db_connection()
     
@@ -518,9 +518,9 @@ def get_seance_seats_grid(seance_id):
         # Récupérer les informations de la salle
         cursor.execute("""
             SELECT r.* FROM room r
-            JOIN seance s ON r.id = s.room_id
+            JOIN showing s ON r.id = s.room_id
             WHERE s.id = %s
-        """, (seance_id,))
+        """, (showing_id,))
         room = cursor.fetchone()
         
         if not room:
@@ -535,10 +535,10 @@ def get_seance_seats_grid(seance_id):
                     ELSE 'available'
                 END as status
             FROM seat s
-            LEFT JOIN seatreservation sr ON s.id = sr.seat_id AND sr.seance_id = %s
+            LEFT JOIN seatreservation sr ON s.id = sr.seat_id AND sr.showing_id = %s
             WHERE s.room_id = %s
             ORDER BY s.seat_row, s.seat_column
-        """, (seance_id, room['id']))
+        """, (showing_id, room['id']))
         seats = cursor.fetchall()
         
         # Créer la grille
@@ -566,7 +566,7 @@ def get_seance_seats_grid(seance_id):
             cursor.close()
             connection.close()
 
-def book_seats(seance_id, seat_ids, user_id):
+def book_seats(showing_id, seat_ids, user_id):
     """Effectue une réservation pour les sièges sélectionnés"""
     connection = get_db_connection()
     
@@ -583,11 +583,11 @@ def book_seats(seance_id, seat_ids, user_id):
                    se.baseprice, m.name as movie, r.name as room, se.date, se.starttime
             FROM seat s
             JOIN room r ON s.room_id = r.id
-            JOIN seance se ON r.id = se.room_id
+            JOIN showing se ON r.id = se.room_id
             JOIN movie m ON se.movie_id = m.id
-            LEFT JOIN seatreservation sr ON s.id = sr.seat_id AND sr.seance_id = %s
+            LEFT JOIN seatreservation sr ON s.id = sr.seat_id AND sr.showing_id = %s
             WHERE s.id IN ({seat_ids_str}) AND se.id = %s AND sr.seat_id IS NULL
-        """, (seance_id, seance_id))
+        """, (showing_id, showing_id))
         
         available_seats = cursor.fetchall()
         
@@ -600,9 +600,9 @@ def book_seats(seance_id, seat_ids, user_id):
         
         # Créer la réservation principale
         cursor.execute("""
-            INSERT INTO booking (price, account_id, seance_id) 
+            INSERT INTO booking (price, account_id, showing_id) 
             VALUES (%s, %s, %s)
-        """, (int(total_price * 100), user_id, seance_id))
+        """, (int(total_price * 100), user_id, showing_id))
         booking_id = cursor.lastrowid
         
         # Créer les clients et réservations de sièges
@@ -616,9 +616,9 @@ def book_seats(seance_id, seat_ids, user_id):
             
             # Créer la réservation de siège
             cursor.execute("""
-                INSERT INTO seatreservation (customer_id, seance_id, seat_id) 
+                INSERT INTO seatreservation (customer_id, showing_id, seat_id) 
                 VALUES (%s, %s, %s)
-            """, (customer_id, seance_id, seat['id']))
+            """, (customer_id, showing_id, seat['id']))
         
         connection.commit()
         
