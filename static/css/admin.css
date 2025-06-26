@@ -1,53 +1,4 @@
 /* Styles pour la page d'administration */
-body {
-    background-color: #f8f9fa;
-}
-
-#admin-container {
-    margin-top: 2rem;
-}
-
-.card {
-    border: none;
-    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
-    margin-bottom: 1.5rem;
-}
-
-.card-header {
-    background-color: #495057;
-    color: white;
-    font-weight: bold;
-}
-
-.table th {
-    background-color: #6c757d;
-    color: white;
-}
-
-.btn-add {
-    background: linear-gradient(45deg, #28a745, #20c997);
-    border: none;
-    color: white;
-}
-
-.btn-add:hover {
-    background: linear-gradient(45deg, #218838, #1aa179);
-    color: white;
-}
-
-.material-symbols-outlined {
-    font-variation-settings:
-    'FILL' 0,
-    'wght' 400,
-    'GRAD' 0,
-    'opsz' 20;
-    font-size: 16px;
-    vertical-align: middle;
-}
-
-.btn-warning .material-symbols-outlined {
-    color: white;
-}
 
 .seats-admin-grid {
     display: inline-block;
@@ -62,20 +13,6 @@ body {
     overflow: auto;
     max-width: 100%;
     padding: 10px;
-}
-
-.seats-row {
-    display: flex;
-    align-items: center;
-    margin-bottom: 5px;
-}
-
-.row-label {
-    width: 30px;
-    text-align: center;
-    font-weight: bold;
-    margin-right: 10px;
-    color: #495057;
 }
 
 .seat-admin {

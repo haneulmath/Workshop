@@ -164,14 +164,7 @@ body {
     cursor: not-allowed;
 }
 
-/* Améliorer la lisibilité des numéros sur les images de sièges */
-.seat {
-    font-weight: bold;
-    font-size: 11px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
+
 
 /* Effet hover pour les sièges avec images */
 .seat:hover:not(.unavailable) {

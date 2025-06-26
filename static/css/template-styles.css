@@ -1,4 +1,4 @@
-/* Styles extraits des templates - à nettoyer */
+/* Styles extraits des templates - version optimisée */
 
 /* Styles pour my_bookings.html */
 .booking-card {
@@ -18,7 +18,7 @@
     border: none;
 }
 
-/* CSS extrait de showing_seats.html */
+/* CSS extrait de showing_seats.html - styles spécifiques uniquement */
 .seat-container .screen {
     background-color: #333;
     color: white;
@@ -26,166 +26,6 @@
     border-radius: 8px;
     font-size: 18px;
     font-weight: bold;
-}
-
-.seat-container .seats-grid {
-    display: inline-block;
-    border: 2px solid #dee2e6;
-    padding: 20px;
-    border-radius: 10px;
-    background-color: #f8f9fa;
-}
-
-.seat-container .seats-row {
-    display: flex;
-    align-items: center;
-    margin-bottom: 5px;
-}
-
-.seat-container .row-label {
-    width: 30px;
-    text-align: center;
-    font-weight: bold;
-    margin-right: 10px;
-    color: #495057;
-}
-
-.seat-container .seat {
-    width: 35px;
-    height: 35px;
-    margin: 2px;
-    border: 2px solid #6c757d;
-    border-radius: 5px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    user-select: none;
-    /* Supprimer l'affichage des numéros */
-    font-size: 0;
-    color: transparent;
-}
-
-.seat-container .seat:hover:not(.occupied):not(.stair):not(.empty) {
-    border-width: 3px;
-}
-
-.seat-container .seat.normal {
-    background-image: url('../img/seat_available.png');
-    background-size: contain;
-    background-repeat: no-repeat;
-    background-position: center;
-    background-color: transparent;
-    border: none;
-}
-
-.seat-container .seat.pmr {
-    background-image: url('../img/seat_pmr_available.png');
-    background-size: contain;
-    background-repeat: no-repeat;
-    background-position: center;
-    background-color: transparent;
-    border: none;
-}
-
-.seat-container .seat.stair {
-    background-image: url('../img/stair.png');
-    background-size: contain;
-    background-repeat: no-repeat;
-    background-position: center;
-    background-color: transparent;
-    border: none;
-    cursor: not-allowed;
-}
-
-.seat-container .seat.empty {
-    background-image: url('../img/empty.png');
-    background-size: contain;
-    background-repeat: no-repeat;
-    background-position: center;
-    background-color: transparent;
-    border: none;
-    cursor: not-allowed;
-}
-
-.seat-container .seat.selected {
-    background-image: url('../img/seat_selected.png') !important;
-    background-size: contain !important;
-    background-repeat: no-repeat !important;
-    background-position: center !important;
-    background-color: transparent !important;
-    border: none !important;
-}
-
-.seat-container .seat.occupied {
-    background-image: url('../img/seat_unavailable.png') !important;
-    background-size: contain !important;
-    background-repeat: no-repeat !important;
-    background-position: center !important;
-    background-color: transparent !important;
-    border: none !important;
-    cursor: not-allowed;
-}
-
-.seat-container .seat.pmr.selected {
-    background-image: url('../img/seat_pmr_selected.png') !important;
-    background-size: contain !important;
-    background-repeat: no-repeat !important;
-    background-position: center !important;
-    background-color: transparent !important;
-    border: none !important;
-}
-
-.seat-container .seat.pmr.occupied {
-    background-image: url('../img/seat_pmr_unavailable.png') !important;
-    background-size: contain !important;
-    background-repeat: no-repeat !important;
-    background-position: center !important;
-    background-color: transparent !important;
-    border: none !important;
-    cursor: not-allowed;
-}
-
-.seat-container .legend {
-    display: flex;
-    justify-content: center;
-    gap: 30px;
-    flex-wrap: wrap;
-}
-
-.seat-container .legend-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 14px;
-}
-
-.seat-container .legend-seat {
-    width: 24px;
-    height: 24px;
-    border-radius: 5px;
-    border: 2px solid;
-}
-
-.seat-container .legend-seat.normal {
-    background-image: url('../img/seat_available.png');
-    background-size: contain;
-    background-repeat: no-repeat;
-    background-position: center;
-    border: none;
-}
-
-.seat-container .legend-seat.pmr {
-    background-image: url('../img/seat_pmr_available.png');
-    background-size: contain;
-    background-repeat: no-repeat;
-    background-position: center;
-    border: none;
-}
-
-.seat-container .legend-seat.empty {
-    background-color: transparent;
-    border: 2px dashed #6c757d;
 }
 
 .seat-container {
@@ -249,6 +89,20 @@
 }
 
 /* Styles pour showing_seats.html */
+.legend-seat.normal {
+    background-image: url('../img/seat_available.png');
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
+.legend-seat.pmr {
+    background-image: url('../img/seat_pmr_available.png');
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
 .legend-seat.selected {
     background-image: url('../img/seat_selected.png');
     background-size: contain;
@@ -283,107 +137,6 @@
     display: none;
 }
 
-/* Redéfinition des styles de sièges pour index.html avec images */
-.seat-grid .seat {
-    width: 35px;
-    height: 35px;
-    border: 2px solid #6c757d;
-    border-radius: 5px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    /* Supprimer l'affichage des numéros */
-    font-size: 0;
-    color: transparent;
-}
-
-.seat-grid .seat:hover {
-    border-width: 3px;
-}
-
-.seat-grid .seat.normal {
-    background-image: url('../img/seat_available.png');
-    background-size: contain;
-    background-repeat: no-repeat;
-    background-position: center;
-    background-color: transparent;
-    border: none;
-}
-
-.seat-grid .seat.pmr {
-    background-image: url('../img/seat_pmr_available.png');
-    background-size: contain;
-    background-repeat: no-repeat;
-    background-position: center;
-    background-color: transparent;
-    border: none;
-}
-
-.seat-grid .seat.stair {
-    background-image: url('../img/stair.png');
-    background-size: contain;
-    background-repeat: no-repeat;
-    background-position: center;
-    background-color: transparent;
-    border: none;
-    cursor: not-allowed;
-}
-
-.seat-grid .seat.empty {
-    background-image: url('../img/empty.png');
-    background-size: contain;
-    background-repeat: no-repeat;
-    background-position: center;
-    background-color: transparent;
-    border: none;
-    cursor: not-allowed;
-}
-
-.seat-grid .seat.selected {
-    background-image: url('../img/seat_selected.png');
-    background-size: contain;
-    background-repeat: no-repeat;
-    background-position: center;
-    background-color: transparent;
-    border: none;
-}
-
-.seat-grid .seat.occupied {
-    background-image: url('../img/seat_unavailable.png');
-    background-size: contain;
-    background-repeat: no-repeat;
-    background-position: center;
-    background-color: transparent;
-    border: none;
-    cursor: not-allowed;
-}
-
-.seat-grid .seat.pmr.selected {
-    background-image: url('../img/seat_pmr_selected.png');
-    background-size: contain;
-    background-repeat: no-repeat;
-    background-position: center;
-    background-color: transparent;
-    border: none;
-}
-
-.seat-grid .seat.pmr.occupied {
-    background-image: url('../img/seat_pmr_unavailable.png');
-    background-size: contain;
-    background-repeat: no-repeat;
-    background-position: center;
-    background-color: transparent;
-    border: none;
-    cursor: not-allowed;
-}
-
-.seat-grid .seat:not(.occupied):not(.stair):not(.empty):hover {
-    transform: scale(1.1);
-    z-index: 10;
-    position: relative;
-}
-
 .legend {
     display: flex;
     justify-content: center;
@@ -395,26 +148,6 @@
     display: flex;
     align-items: center;
     gap: 5px;
-}
-
-/* Styles responsives pour la grille de sièges */
-@media (max-width: 768px) {
-    .seats-grid {
-        padding: 10px;
-    }
-    
-    .seat {
-        width: 30px;
-        height: 30px;
-        font-size: 9px;
-        margin: 1px;
-    }
-    
-    .row-label {
-        width: 25px;
-        margin-right: 5px;
-        font-size: 12px;
-    }
 }
 
 /* Styles pour home.html */

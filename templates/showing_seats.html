@@ -103,13 +103,30 @@
     </div>
 </div>
 
+<!-- Données pour JavaScript (JSON embedé) -->
+<script type="application/json" id="room-data">{{ room | tojson | safe }}</script>
+<script type="application/json" id="grid-data">{{ grid | tojson | safe }}</script>
+
 <script>
 let selectedSeats = [];
 const seatPrice = parseFloat('{{ showing.price }}');
 
-// Données de la grille depuis le serveur
-const roomData = {{ room | tojson }};
-const gridData = {{ grid | tojson }};
+// Récupération des données depuis les scripts JSON
+let roomData, gridData;
+
+try {
+    roomData = JSON.parse(document.getElementById('room-data').textContent);
+    gridData = JSON.parse(document.getElementById('grid-data').textContent);
+} catch (error) {
+    console.error('Erreur lors du parsing des données:', error);
+    roomData = null;
+    gridData = null;
+}
+
+// Validation des données
+if (!roomData || !gridData) {
+    console.error('Erreur: Données de la salle manquantes');
+}
 
 document.addEventListener('DOMContentLoaded', function() {
     generateSeatsGrid();

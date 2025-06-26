@@ -1,8 +1,7 @@
 /* Styles spécifiques pour les pages de réservation */
+/* La plupart des styles ont été consolidés dans style.css */
 
-/* Note: La plupart des styles ont été déplacés vers unused-styles.css car ils ne sont pas utilisés actuellement */
-
-/* Styles responsives pour mobile */
+/* Styles responsives spécifiques pour mobile */
 @media (max-width: 768px) {
     .booking-container {
         margin-top: 1rem;
