@@ -1,2 +1,5 @@
+__pycache__/
+old/
+venv/
 __pycache__
-old
+.DS_Store
