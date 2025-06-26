@@ -1,18 +1,31 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-from flask import Flask, render_template, jsonify, request, redirect, url_for, session, flash
+from flask import Flask, render_template, jsonify, request, redirect, url_for, session, flash, Response
 from flask_cors import CORS
 import modele  # Import du module pour la gestion de la base de données
 import importlib
 from datetime import datetime
 import json
+import time
 
 # Forcer le rechargement du module modele
 importlib.reload(modele)
 
 app = Flask(__name__)
-app.secret_key = 'votre_clef_secrete_cinema'  # Changez ceci en production
 CORS(app)
+app.secret_key = 'your-secret-key-here'  # Changez cette clé en production
+
+# Cache timestamp pour le cache-busting des affiches
+POSTER_CACHE_TIMESTAMP = str(int(time.time()))
+
+def get_poster_url_with_cache_busting(movie_id):
+    """Génère une URL d'affiche avec paramètre de cache-busting"""
+    return url_for('movie_poster', movie_id=movie_id, v=POSTER_CACHE_TIMESTAMP)
+
+# Rendre la fonction disponible dans les templates
+@app.context_processor
+def utility_processor():
+    return dict(get_poster_url_with_cache_busting=get_poster_url_with_cache_busting)
 
 # Ajouter des fonctions helper pour les templates
 @app.template_global()
@@ -58,6 +71,34 @@ def movie_detail(movie_id):
         return redirect(url_for('movies'))
     
     return render_template('movie_detail.html', movie=movie, showings=showings)
+
+@app.route('/movie/<int:movie_id>/poster')
+def movie_poster(movie_id):
+    """Servir l'affiche d'un film en tant qu'image"""
+    poster = modele.get_movie_poster(movie_id)
+    
+    if not poster:
+        # Retourner une image par défaut ou une erreur 404
+        return Response("Affiche non trouvée", status=404)
+    
+    # Vérifier si c'est une requête avec cache-busting
+    version = request.args.get('v', '')
+    
+    # Cache plus court pour permettre les mises à jour
+    cache_control = 'public, max-age=300'  # Cache 5 minutes
+    if version:
+        # Si version spécifiée, cache plus long mais avec ETag
+        cache_control = 'public, max-age=3600'  # Cache 1 heure avec version
+    
+    return Response(
+        poster['image'],
+        mimetype=poster['mime_type'],
+        headers={
+            'Content-Disposition': f'inline; filename="{poster["name"]}"',
+            'Cache-Control': cache_control,
+            'ETag': f'"{movie_id}-{len(poster["image"])}"'  # ETag basé sur l'ID et la taille
+        }
+    )
 
 @app.route('/showings/today')
 def showings_today():
@@ -465,6 +506,65 @@ def update_movie(movie_id):
 def delete_movie(movie_id):
     """Supprimer un film"""
     success, message = modele.delete_movie(movie_id)
+    flash(message, 'success' if success else 'error')
+    return redirect(url_for('admin_dashboard'))
+
+@app.route('/admin/movie/<int:movie_id>/poster/upload', methods=['POST'])
+def upload_movie_poster(movie_id):
+    """Télécharger une affiche pour un film"""
+    try:
+        if 'poster' not in request.files:
+            flash('Aucun fichier sélectionné', 'error')
+            return redirect(url_for('admin_dashboard'))
+        
+        file = request.files['poster']
+        if file.filename == '':
+            flash('Aucun fichier sélectionné', 'error')
+            return redirect(url_for('admin_dashboard'))
+        
+        # Vérifier le type de fichier
+        allowed_types = {'image/jpeg', 'image/png', 'image/svg+xml'}
+        if file.content_type not in allowed_types:
+            flash('Type de fichier non supporté. Utilisez JPG, PNG ou SVG.', 'error')
+            return redirect(url_for('admin_dashboard'))
+        
+        # Vérifier la taille (5MB max)
+        file.seek(0, 2)  # Se déplacer à la fin du fichier
+        file_size = file.tell()
+        file.seek(0)  # Revenir au début
+        
+        if file_size > 5 * 1024 * 1024:  # 5MB
+            flash('Le fichier est trop volumineux (max 5MB)', 'error')
+            return redirect(url_for('admin_dashboard'))
+        
+        # Lire le contenu du fichier
+        file_content = file.read()
+        
+        # Sauvegarder l'affiche
+        success, message = modele.save_movie_poster(movie_id, file.filename, file.content_type, file_content)
+        
+        # Mettre à jour le timestamp du cache pour forcer le rafraîchissement
+        if success:
+            global POSTER_CACHE_TIMESTAMP
+            POSTER_CACHE_TIMESTAMP = str(int(time.time()))
+        
+        flash(message, 'success' if success else 'error')
+        
+    except Exception as e:
+        flash(f'Erreur lors du téléchargement: {str(e)}', 'error')
+    
+    return redirect(url_for('admin_dashboard'))
+
+@app.route('/admin/movie/<int:movie_id>/poster/delete', methods=['POST'])
+def delete_movie_poster_route(movie_id):
+    """Supprimer l'affiche d'un film"""
+    success, message = modele.delete_movie_poster(movie_id)
+    
+    # Mettre à jour le timestamp du cache pour forcer le rafraîchissement
+    if success:
+        global POSTER_CACHE_TIMESTAMP
+        POSTER_CACHE_TIMESTAMP = str(int(time.time()))
+    
     flash(message, 'success' if success else 'error')
     return redirect(url_for('admin_dashboard'))
 

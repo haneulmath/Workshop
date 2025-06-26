@@ -1328,3 +1328,197 @@ def has_room_bookings_for_seat(seat_id):
         if connection.is_connected():
             cursor.close()
             connection.close()
+
+# ===== FONCTIONS POUR LES AFFICHES DE FILMS =====
+
+def get_movie_poster(movie_id):
+    """Récupère l'affiche principale d'un film"""
+    connection = get_db_connection()
+    
+    if connection is None:
+        return None
+        
+    try:
+        cursor = connection.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT image, name, mime_type, file_size
+            FROM movieposter 
+            WHERE movie_id = %s AND is_primary = TRUE
+            LIMIT 1
+        """, (movie_id,))
+        
+        poster = cursor.fetchone()
+        return poster
+        
+    except Error as e:
+        print(f"Erreur lors de la récupération de l'affiche: {e}")
+        return None
+        
+    finally:
+        if connection.is_connected():
+            cursor.close()
+            connection.close()
+
+def save_movie_poster(movie_id, filename, mime_type, image_data):
+    """Sauvegarde ou met à jour l'affiche d'un film"""
+    connection = get_db_connection()
+    
+    if connection is None:
+        return False, "Erreur de connexion à la base de données"
+        
+    try:
+        cursor = connection.cursor()
+        
+        # Supprimer l'affiche existante s'il y en a une
+        cursor.execute("DELETE FROM movieposter WHERE movie_id = %s", (movie_id,))
+        
+        # Insérer la nouvelle affiche
+        file_size = len(image_data)
+        cursor.execute("""
+            INSERT INTO movieposter (movie_id, name, mime_type, image, file_size, is_primary)
+            VALUES (%s, %s, %s, %s, %s, TRUE)
+        """, (movie_id, filename, mime_type, image_data, file_size))
+        
+        connection.commit()
+        return True, "Affiche téléchargée avec succès"
+        
+    except Error as e:
+        print(f"Erreur lors de la sauvegarde de l'affiche: {e}")
+        return False, f"Erreur lors de la sauvegarde: {str(e)}"
+        
+    finally:
+        if connection.is_connected():
+            cursor.close()
+            connection.close()
+
+def delete_movie_poster(movie_id):
+    """Supprime l'affiche d'un film"""
+    connection = get_db_connection()
+    
+    if connection is None:
+        return False, "Erreur de connexion à la base de données"
+        
+    try:
+        cursor = connection.cursor(dictionary=True)
+        
+        # Vérifier s'il y a une affiche à supprimer
+        cursor.execute("SELECT COUNT(*) as count FROM movieposter WHERE movie_id = %s", (movie_id,))
+        result = cursor.fetchone()
+        
+        if result['count'] == 0:
+            return False, "Aucune affiche à supprimer"
+        
+        # Supprimer l'affiche
+        cursor.execute("DELETE FROM movieposter WHERE movie_id = %s", (movie_id,))
+        connection.commit()
+        
+        return True, "Affiche supprimée avec succès"
+        
+    except Error as e:
+        print(f"Erreur lors de la suppression de l'affiche: {e}")
+        return False, f"Erreur lors de la suppression: {str(e)}"
+        
+    finally:
+        if connection.is_connected():
+            cursor.close()
+            connection.close()
+
+# ===== FONCTIONS D'ADMINISTRATION DES AFFICHES =====
+
+def create_movieposter_table():
+    """Crée la table movieposter si elle n'existe pas"""
+    connection = get_db_connection()
+    
+    if connection is None:
+        return False, "Erreur de connexion à la base de données"
+        
+    try:
+        cursor = connection.cursor()
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS movieposter (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                movie_id INT NOT NULL,
+                image LONGBLOB NOT NULL,
+                name VARCHAR(255) NOT NULL,
+                mime_type VARCHAR(100) NOT NULL,
+                file_size INT,
+                upload_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                is_primary BOOLEAN DEFAULT TRUE,
+                FOREIGN KEY (movie_id) REFERENCES movie(id) ON DELETE CASCADE,
+                INDEX idx_movie_id (movie_id)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        """)
+        connection.commit()
+        return True, "Table movieposter créée avec succès"
+        
+    except Error as e:
+        print(f"Erreur lors de la création de la table movieposter: {e}")
+        return False, f"Erreur lors de la création: {str(e)}"
+        
+    finally:
+        if connection.is_connected():
+            cursor.close()
+            connection.close()
+
+def insert_poster_from_file(movie_id, file_path, filename=None):
+    """Insère une affiche depuis un fichier local"""
+    import os
+    import mimetypes
+    
+    if not os.path.exists(file_path):
+        return False, f"Fichier non trouvé: {file_path}"
+    
+    if filename is None:
+        filename = os.path.basename(file_path)
+    
+    # Déterminer le type MIME
+    mime_type, _ = mimetypes.guess_type(file_path)
+    if mime_type is None:
+        mime_type = 'application/octet-stream'
+    
+    try:
+        # Lire le fichier
+        with open(file_path, 'rb') as f:
+            image_data = f.read()
+        
+        # Utiliser la fonction existante save_movie_poster
+        return save_movie_poster(movie_id, filename, mime_type, image_data)
+        
+    except Exception as e:
+        return False, f"Erreur lors de la lecture du fichier: {str(e)}"
+
+def list_movie_posters():
+    """Liste toutes les affiches dans la base de données"""
+    connection = get_db_connection()
+    
+    if connection is None:
+        return None
+        
+    try:
+        cursor = connection.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT 
+                mp.id,
+                mp.movie_id,
+                m.name as movie_name,
+                mp.name as poster_name,
+                mp.mime_type,
+                mp.file_size,
+                mp.upload_date,
+                mp.is_primary
+            FROM movieposter mp
+            JOIN movie m ON mp.movie_id = m.id
+            ORDER BY m.name
+        """)
+        
+        posters = cursor.fetchall()
+        return posters
+        
+    except Error as e:
+        print(f"Erreur lors de la récupération des affiches: {e}")
+        return None
+        
+    finally:
+        if connection.is_connected():
+            cursor.close()
+            connection.close()

@@ -79,7 +79,7 @@ body {
 }
 
 .seat.normal {
-    background-image: url('../img/seat_available.png');
+    background-image: url('../img/seat_available.svg');
     background-size: contain;
     background-repeat: no-repeat;
     background-position: center;
@@ -88,7 +88,7 @@ body {
 }
 
 .seat.pmr {
-    background-image: url('../img/seat_pmr_available.png');
+    background-image: url('../img/seat_pmr_available.svg');
     background-size: contain;
     background-repeat: no-repeat;
     background-position: center;
@@ -97,7 +97,7 @@ body {
 }
 
 .seat.stair {
-    background-image: url('../img/stair.png');
+    background-image: url('../img/stair.svg');
     background-size: contain;
     background-repeat: no-repeat;
     background-position: center;
@@ -117,7 +117,7 @@ body {
 }
 
 .seat.available {
-    background-image: url('../img/seat_available.png');
+    background-image: url('../img/seat_available.svg');
     background-size: contain;
     background-repeat: no-repeat;
     background-position: center;
@@ -126,7 +126,7 @@ body {
 }
 
 .seat.selected {
-    background-image: url('../img/seat_selected.png');
+    background-image: url('../img/seat_selected.svg');
     background-size: contain;
     background-repeat: no-repeat;
     background-position: center;
@@ -135,7 +135,7 @@ body {
 }
 
 .seat.unavailable {
-    background-image: url('../img/seat_unavailable.png');
+    background-image: url('../img/seat_unavailable.svg');
     background-size: contain;
     background-repeat: no-repeat;
     background-position: center;
@@ -146,7 +146,7 @@ body {
 
 /* Styles spécifiques pour les sièges PMR dans différents états */
 .seat.pmr.selected {
-    background-image: url('../img/seat_pmr_selected.png');
+    background-image: url('../img/seat_pmr_selected.svg');
     background-size: contain;
     background-repeat: no-repeat;
     background-position: center;
@@ -155,7 +155,7 @@ body {
 }
 
 .seat.pmr.unavailable {
-    background-image: url('../img/seat_pmr_unavailable.png');
+    background-image: url('../img/seat_pmr_unavailable.svg');
     background-size: contain;
     background-repeat: no-repeat;
     background-position: center;

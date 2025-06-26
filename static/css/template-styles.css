@@ -47,21 +47,21 @@
 
 /* Légendes avec images pour index.html */
 .legend-seat.normal-legend {
-    background-image: url('../img/seat_available.png');
+    background-image: url('../img/seat_available.svg');
     background-size: contain;
     background-repeat: no-repeat;
     background-position: center;
 }
 
 .legend-seat.pmr-legend {
-    background-image: url('../img/seat_pmr_available.png');
+    background-image: url('../img/seat_pmr_available.svg');
     background-size: contain;
     background-repeat: no-repeat;
     background-position: center;
 }
 
 .legend-seat.stair-legend {
-    background-image: url('../img/stair.png');
+    background-image: url('../img/stair.svg');
     background-size: contain;
     background-repeat: no-repeat;
     background-position: center;
@@ -75,14 +75,14 @@
 }
 
 .legend-seat.selected-legend {
-    background-image: url('../img/seat_selected.png');
+    background-image: url('../img/seat_selected.svg');
     background-size: contain;
     background-repeat: no-repeat;
     background-position: center;
 }
 
 .legend-seat.occupied-legend {
-    background-image: url('../img/seat_unavailable.png');
+    background-image: url('../img/seat_unavailable.svg');
     background-size: contain;
     background-repeat: no-repeat;
     background-position: center;
@@ -90,28 +90,28 @@
 
 /* Styles pour showing_seats.html */
 .legend-seat.normal {
-    background-image: url('../img/seat_available.png');
+    background-image: url('../img/seat_available.svg');
     background-size: contain;
     background-repeat: no-repeat;
     background-position: center;
 }
 
 .legend-seat.pmr {
-    background-image: url('../img/seat_pmr_available.png');
+    background-image: url('../img/seat_pmr_available.svg');
     background-size: contain;
     background-repeat: no-repeat;
     background-position: center;
 }
 
 .legend-seat.selected {
-    background-image: url('../img/seat_selected.png');
+    background-image: url('../img/seat_selected.svg');
     background-size: contain;
     background-repeat: no-repeat;
     background-position: center;
 }
 
 .legend-seat.occupied {
-    background-image: url('../img/seat_unavailable.png');
+    background-image: url('../img/seat_unavailable.svg');
     background-size: contain;
     background-repeat: no-repeat;
     background-position: center;

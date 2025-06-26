@@ -35,7 +35,7 @@
 }
 
 .seat-admin.normal {
-    background-image: url('../img/seat_available.png');
+    background-image: url('../img/seat_available.svg');
     background-size: contain;
     background-repeat: no-repeat;
     background-position: center;
@@ -44,7 +44,7 @@
 }
 
 .seat-admin.pmr {
-    background-image: url('../img/seat_pmr_available.png');
+    background-image: url('../img/seat_pmr_available.svg');
     background-size: contain;
     background-repeat: no-repeat;
     background-position: center;
@@ -53,7 +53,7 @@
 }
 
 .seat-admin.stair {
-    background-image: url('../img/stair.png');
+    background-image: url('../img/stair.svg');
     background-size: contain;
     background-repeat: no-repeat;
     background-position: center;
@@ -95,4 +95,20 @@
 .seats-admin-grid .column-headers-spacer {
     width: 30px;
     margin-right: 10px;
+}
+
+/* Styles pour les affiches */
+.poster-thumbnail {
+    width: 50px;
+    height: 75px;
+    object-fit: cover;
+    border-radius: 4px;
+    border: 1px solid #dee2e6;
+}
+
+.poster-preview {
+    max-width: 200px;
+    max-height: 300px;
+    object-fit: contain;
+    border-radius: 8px;
 }

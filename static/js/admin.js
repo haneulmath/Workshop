@@ -134,4 +134,49 @@ document.addEventListener('DOMContentLoaded', function() {
             alert('Erreur lors de la mise à jour');
         }
     }
+
+    // Fonctions pour rafraîchir les affiches après upload/delete
+    function refreshPosterImages(movieId) {
+        const timestamp = Date.now();
+        
+        // Rafraîchir l'affiche dans le tableau
+        const thumbnailImg = document.querySelector(`img[src*="/movie/${movieId}/poster"]`);
+        if (thumbnailImg) {
+            const currentSrc = thumbnailImg.src;
+            const newSrc = currentSrc.split('?')[0] + '?v=' + timestamp;
+            thumbnailImg.src = newSrc;
+        }
+        
+        // Rafraîchir l'affiche dans la modal
+        const modalImg = document.getElementById(`currentPoster${movieId}`);
+        if (modalImg) {
+            const currentSrc = modalImg.src;
+            const newSrc = currentSrc.split('?')[0] + '?v=' + timestamp;
+            modalImg.src = newSrc;
+        }
+    }
+
+    // Gestionnaire pour les formulaires d'upload d'affiche
+    document.querySelectorAll('form[action*="/poster/upload"]').forEach(form => {
+        form.addEventListener('submit', function(e) {
+            const movieId = this.action.match(/\/movie\/(\d+)\/poster\/upload/)[1];
+            
+            // Délai pour permettre au serveur de traiter l'upload
+            setTimeout(() => {
+                refreshPosterImages(movieId);
+            }, 1000);
+        });
+    });
+
+    // Gestionnaire pour les formulaires de suppression d'affiche
+    document.querySelectorAll('form[action*="/poster/delete"]').forEach(form => {
+        form.addEventListener('submit', function(e) {
+            const movieId = this.action.match(/\/movie\/(\d+)\/poster\/delete/)[1];
+            
+            // Délai pour permettre au serveur de traiter la suppression
+            setTimeout(() => {
+                refreshPosterImages(movieId);
+            }, 1000);
+        });
+    });
 });

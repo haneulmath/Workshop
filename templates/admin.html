@@ -107,6 +107,7 @@
                                         <th>Nom</th>
                                         <th>Durée</th>
                                         <th>Réalisateur</th>
+                                        <th>Affiche</th>
                                         <th>Actions</th>
                                     </tr>
                                 </thead>
@@ -118,7 +119,16 @@
                                             <td>{{ movie.name }}</td>
                                             <td>{{ movie.duration }} min</td>
                                             <td>{{ movie.director or '-' }}</td>
+                                            <td>
+                                                <img src="{{ get_poster_url_with_cache_busting(movie.id) }}" 
+                                                     alt="Affiche" 
+                                                     class="poster-thumbnail"
+                                                     onerror="this.src='{{ url_for('static', filename='img/default-poster.svg') }}'; this.onerror=null;">
+                                            </td>
                                             <td class="actions-inline">
+                                                <button type="button" class="btn btn-sm btn-info me-1" data-bs-toggle="modal" data-bs-target="#posterModal{{ movie.id }}" title="Gérer l'affiche">
+                                                    <span class="material-symbols-outlined">image</span>
+                                                </button>
                                                 <button type="button" class="btn btn-sm btn-warning me-1" data-bs-toggle="modal" data-bs-target="#editMovieModal{{ movie.id }}">
                                                     <span class="material-symbols-outlined">edit</span>
                                                 </button>
@@ -132,7 +142,7 @@
                                         {% endfor %}
                                     {% else %}
                                         <tr>
-                                            <td colspan="5" class="text-center text-muted">Aucun film</td>
+                                            <td colspan="6" class="text-center text-muted">Aucun film</td>
                                         </tr>
                                     {% endif %}
                                 </tbody>
@@ -464,14 +474,14 @@
                                 </div>
                             </div>
                             
-                            <div class="text-center mb-3">
-                                <div class="bg-dark text-white py-2 px-4 rounded">ÉCRAN</div>
-                            </div>
-                            
                             <div class="seats-overflow">
                                 <div id="seats-grid" class="seats-admin-grid">
                                     <!-- La grille sera générée dynamiquement -->
                                 </div>
+                            </div>
+                            
+                            <div class="text-center mt-3">
+                                <div class="bg-dark text-white py-2 px-4 rounded">ÉCRAN</div>
                             </div>
                         </div>
                     </div>
@@ -523,6 +533,60 @@
                             <button type="submit" class="btn btn-primary">Enregistrer</button>
                         </div>
                     </form>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Modales pour la gestion des affiches -->
+    {% if movies %}
+        {% for movie in movies %}
+        <div class="modal fade" id="posterModal{{ movie.id }}" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Gérer l'affiche: {{ movie.name }}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <!-- Affichage de l'affiche actuelle -->
+                        <div class="row mb-4">
+                            <div class="col-md-4">
+                                <h6>Affiche actuelle:</h6>
+                                <img src="{{ get_poster_url_with_cache_busting(movie.id) }}" 
+                                     alt="Affiche actuelle" 
+                                     class="img-fluid poster-preview border"
+                                     id="currentPoster{{ movie.id }}"
+                                     onerror="this.src='{{ url_for('static', filename='img/default-poster.svg') }}'; this.onerror=null;">
+                            </div>
+                            <div class="col-md-8">
+                                <!-- Upload nouvelle affiche -->
+                                <h6>Télécharger une nouvelle affiche:</h6>
+                                <form method="POST" action="/admin/movie/{{ movie.id }}/poster/upload" enctype="multipart/form-data">
+                                    <div class="mb-3">
+                                        <input type="file" class="form-control" name="poster" accept="image/*" required>
+                                        <div class="form-text">Formats acceptés: JPG, PNG, SVG (max 5MB)</div>
+                                    </div>
+                                    <button type="submit" class="btn btn-success">
+                                        <span class="material-symbols-outlined">upload</span> Télécharger
+                                    </button>
+                                </form>
+                                
+                                <!-- Supprimer l'affiche -->
+                                <hr>
+                                <h6 class="text-danger">Zone de danger:</h6>
+                                <form method="POST" action="/admin/movie/{{ movie.id }}/poster/delete">
+                                    <button type="submit" class="btn btn-danger" onclick="return confirm('Êtes-vous sûr de vouloir supprimer cette affiche ?')">
+                                        <span class="material-symbols-outlined">delete</span> Supprimer l'affiche
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+                    </div>
                 </div>
             </div>
         </div>
