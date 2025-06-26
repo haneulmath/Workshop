@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Mes réservations - Cinema Palace{% endblock %}
+{% block title %}Mes réservations{% endblock %}
 
 {% block content %}
 <div class="container mt-4">
@@ -11,9 +11,6 @@
                     <i class="fas fa-ticket-alt text-primary"></i> 
                     Mes réservations
                 </h1>
-                <a href="{{ url_for('home') }}" class="btn btn-outline-primary">
-                    <i class="fas fa-home"></i> Accueil
-                </a>
             </div>
 
             {% if bookings %}
@@ -117,49 +114,6 @@
                     {% endfor %}
                 </div>
 
-                <!-- Statistiques -->
-                <div class="card mt-4">
-                    <div class="card-body">
-                        <h5 class="card-title">
-                            <i class="fas fa-chart-bar"></i> Mes statistiques
-                        </h5>
-                        <div class="row text-center">
-                            <div class="col-md-3">
-                                <div class="stat-item">
-                                    <div class="stat-number">{{ bookings|length }}</div>
-                                    <div class="stat-label">Réservation{{ 's' if bookings|length > 1 else '' }}</div>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="stat-item">
-                                    <div class="stat-number">{{ bookings|sum(attribute='seat_count') }}</div>
-                                    <div class="stat-label">Place{{ 's' if bookings|sum(attribute='seat_count') > 1 else '' }} réservée{{ 's' if bookings|sum(attribute='seat_count') > 1 else '' }}</div>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="stat-item">
-                                    <div class="stat-number">{{ "%.0f"|format(bookings|sum(attribute='price_euros')) }}€</div>
-                                    <div class="stat-label">Total dépensé</div>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="stat-item">
-                                    <div class="stat-number">
-                                        {% set upcoming = namespace(count=0) %}
-                                        {% for booking in bookings %}
-                                            {% if booking.date_only >= today %}
-                                                {% set upcoming.count = upcoming.count + 1 %}
-                                            {% endif %}
-                                        {% endfor %}
-                                        {{ upcoming.count }}
-                                    </div>
-                                    <div class="stat-label">Séance{{ 's' if upcoming.count > 1 else '' }} à venir</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
             {% else %}
                 <div class="text-center py-5">
                     <div class="empty-state">
@@ -187,7 +141,7 @@
 }
 
 .booking-card .card-header {
-    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%) !important;
+    background: #007bff;
 }
 
 .stat-item {

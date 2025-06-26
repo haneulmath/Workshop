@@ -5,120 +5,53 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Administration - Cinema Palace</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        body {
-            background-color: #f8f9fa;
-        }
-        .admin-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 2rem 0;
-            margin-bottom: 2rem;
-        }
-        .card {
-            border: none;
-            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
-            margin-bottom: 1.5rem;
-        }
-        .card-header {
-            background-color: #495057;
-            color: white;
-            font-weight: bold;
-        }
-        .table th {
-            background-color: #6c757d;
-            color: white;
-        }
-        .btn-add {
-            background: linear-gradient(45deg, #28a745, #20c997);
-            border: none;
-            color: white;
-        }
-        .btn-add:hover {
-            background: linear-gradient(45deg, #218838, #1aa179);
-            color: white;
-        }
-
-        .seats-admin-grid {
-            display: inline-block;
-            border: 2px solid #dee2e6;
-            padding: 20px;
-            border-radius: 10px;
-            background-color: #f8f9fa;
-        }
-        
-        .seats-row {
-            display: flex;
-            align-items: center;
-            margin-bottom: 5px;
-        }
-        
-        .row-label {
-            width: 30px;
-            text-align: center;
-            font-weight: bold;
-            margin-right: 10px;
-            color: #495057;
-        }
-        
-        .seat-admin {
-            width: 35px;
-            height: 35px;
-            margin: 2px;
-            border: 2px solid #6c757d;
-            border-radius: 5px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 10px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-        
-        .seat-admin:hover {
-            border-width: 3px;
-        }
-        
-        .seat-admin.normal {
-            background-color: #6c757d;
-            color: white;
-        }
-        
-        .seat-admin.pmr {
-            background-color: #ffc107;
-            color: #000;
-        }
-        
-        .seat-admin.stair {
-            background-color: #17a2b8;
-            color: white;
-        }
-        
-        .seat-admin.empty {
-            background-color: transparent;
-            border-style: dashed;
-            color: #6c757d;
-        }
-    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/template-styles.css') }}">
 </head>
 <body>
-    <header class="admin-header">
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container">
-            <div class="row align-items-center">
-                <div class="col">
-                    <h1 class="mb-0">🎬 Administration Cinema Palace</h1>
-                    <p class="mb-0">Gestion des films, salles et séances</p>
-                </div>
-                <div class="col-auto">
-                    <a href="/" class="btn btn-outline-light">
-                        <i class="fas fa-home"></i> Retour à l'accueil
-                    </a>
-                </div>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('home') }}">Accueil</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('movies') }}">Films</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('showings_today') }}">Séances du jour</a>
+                    </li>
+                </ul>
+                <ul class="navbar-nav">
+                    {% if session.username %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('my_bookings') }}">Réservations</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('logout') }}">Déconnexion</a>
+                        </li>
+                    {% else %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('login_form') }}">Connexion</a>
+                        </li>
+                    {% endif %}
+                    <li class="nav-item">
+                        <a class="nav-link active" href="{{ url_for('admin_dashboard') }}">Administration</a>
+                    </li>
+                </ul>
             </div>
         </div>
-    </header>
+    </nav>
 
-    <div class="container">
+    <div class="container" id="admin-container">
         <!-- Messages Flash -->
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
@@ -136,7 +69,7 @@
             <div class="col-md-6">
                 <div class="card">
                     <div class="card-header">
-                        <h5 class="mb-0">🎭 Gestion des Films</h5>
+                        <h5 class="mb-0">Gestion des Films</h5>
                     </div>
                     <div class="card-body">
                         <form method="POST" action="/admin/movie" class="mb-3">
@@ -185,10 +118,14 @@
                                             <td>{{ movie.name }}</td>
                                             <td>{{ movie.duration }} min</td>
                                             <td>{{ movie.director or '-' }}</td>
-                                            <td>
-                                                <button type="button" class="btn btn-sm btn-warning me-1" data-bs-toggle="modal" data-bs-target="#editMovieModal{{ movie.id }}">✏️</button>
-                                                <form method="POST" action="/admin/movie/{{ movie.id }}/delete" style="display: inline;">
-                                                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce film ?')">🗑️</button>
+                                            <td class="actions-inline">
+                                                <button type="button" class="btn btn-sm btn-warning me-1" data-bs-toggle="modal" data-bs-target="#editMovieModal{{ movie.id }}">
+                                                    <span class="material-symbols-outlined">edit</span>
+                                                </button>
+                                                <form method="POST" action="/admin/movie/{{ movie.id }}/delete" class="inline-form">
+                                                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce film ?')">
+                                                        <span class="material-symbols-outlined">delete</span>
+                                                    </button>
                                                 </form>
                                             </td>
                                         </tr>
@@ -209,7 +146,7 @@
             <div class="col-md-6">
                 <div class="card">
                     <div class="card-header">
-                        <h5 class="mb-0">🏛️ Gestion des Salles</h5>
+                        <h5 class="mb-0">Gestion des Salles</h5>
                     </div>
                     <div class="card-body">
                         <form method="POST" action="/admin/room" class="mb-3">
@@ -250,10 +187,14 @@
                                             <td>{{ room.nb_rows }}</td>
                                             <td>{{ room.nb_columns }}</td>
                                             <td>{{ room.nb_rows * room.nb_columns }}</td>
-                                            <td>
-                                                <button type="button" class="btn btn-sm btn-warning me-1" data-bs-toggle="modal" data-bs-target="#editRoomModal{{ room.id }}">✏️</button>
-                                                <form method="POST" action="/admin/room/{{ room.id }}/delete" style="display: inline;">
-                                                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Êtes-vous sûr de vouloir supprimer cette salle ?')">🗑️</button>
+                                            <td class="actions-inline">
+                                                <button type="button" class="btn btn-sm btn-warning me-1" data-bs-toggle="modal" data-bs-target="#editRoomModal{{ room.id }}">
+                                                    <span class="material-symbols-outlined">edit</span>
+                                                </button>
+                                                <form method="POST" action="/admin/room/{{ room.id }}/delete" class="inline-form">
+                                                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Êtes-vous sûr de vouloir supprimer cette salle ?')">
+                                                        <span class="material-symbols-outlined">delete</span>
+                                                    </button>
                                                 </form>
                                             </td>
                                         </tr>
@@ -276,7 +217,7 @@
             <div class="col-12">
                 <div class="card">
                     <div class="card-header">
-                        <h5 class="mb-0">🎞️ Gestion des Séances</h5>
+                        <h5 class="mb-0">Gestion des Séances</h5>
                     </div>
                     <div class="card-body">
                         <form method="POST" action="/admin/showing" class="mb-4">
@@ -345,10 +286,14 @@
                                             <td>{{ showing.movie_name }}</td>
                                             <td>{{ showing.room_name }}</td>
                                             <td>{{ "%.2f"|format(showing.baseprice / 100) }}€</td>
-                                            <td>
-                                                <button type="button" class="btn btn-sm btn-warning me-1" data-bs-toggle="modal" data-bs-target="#editShowingModal{{ showing.id }}">✏️</button>
-                                                <form method="POST" action="/admin/showing/{{ showing.id }}/delete" style="display: inline;">
-                                                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Êtes-vous sûr de vouloir supprimer cette séance ?')">🗑️</button>
+                                            <td class="actions-inline">
+                                                <button type="button" class="btn btn-sm btn-warning me-1" data-bs-toggle="modal" data-bs-target="#editShowingModal{{ showing.id }}">
+                                                    <span class="material-symbols-outlined">edit</span>
+                                                </button>
+                                                <form method="POST" action="/admin/showing/{{ showing.id }}/delete" class="inline-form">
+                                                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Êtes-vous sûr de vouloir supprimer cette séance ?')">
+                                                        <span class="material-symbols-outlined">delete</span>
+                                                    </button>
                                                 </form>
                                             </td>
                                         </tr>
@@ -371,7 +316,7 @@
             <div class="col-12">
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">🎫 Gestion des Réservations</h5>
+                        <h5 class="mb-0">Gestion des Réservations</h5>
                         <span class="badge bg-primary">
                             {% if bookings %}{{ bookings|length }}{% else %}0{% endif %} réservation(s)
                         </span>
@@ -416,10 +361,10 @@
                                                 <strong class="text-success">{{ "%.2f"|format(booking.price_euros) }}€</strong>
                                             </td>
                                             <td>
-                                                <form method="POST" action="/admin/booking/{{ booking.booking_id }}/cancel" style="display: inline;">
+                                                <form method="POST" action="/admin/booking/{{ booking.booking_id }}/cancel" class="inline-form">
                                                     <button type="submit" class="btn btn-sm btn-danger" 
                                                             onclick="return confirm('Êtes-vous sûr de vouloir annuler cette réservation ? Cette action est irréversible.')">
-                                                        🗑️ Annuler
+                                                        <span class="material-symbols-outlined">delete</span>
                                                     </button>
                                                 </form>
                                             </td>
@@ -477,7 +422,7 @@
             <div class="col-12">
                 <div class="card">
                     <div class="card-header">
-                        <h5 class="mb-0">🪑 Gestion des Sièges</h5>
+                        <h5 class="mb-0">Gestion des Sièges</h5>
                     </div>
                     <div class="card-body">
                         <div class="row mb-3">
@@ -496,14 +441,26 @@
                             </div>
                         </div>
                         
-                        <div id="seats-grid-container" style="display: none;">
+                        <div id="seats-grid-container" class="seats-grid-container">
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <h6 id="selected-room-title" class="mb-0"></h6>
-                                <div class="d-flex gap-3">
-                                    <span><span class="badge bg-secondary">Normal</span></span>
-                                    <span><span class="badge bg-warning text-dark">PMR</span></span>
-                                    <span><span class="badge bg-info">Escalier</span></span>
-                                    <span><span class="badge bg-light text-dark border">Vide</span></span>
+                                <div class="d-flex gap-3 align-items-center">
+                                    <div class="d-flex align-items-center">
+                                        <div class="legend-seat normal-legend me-2"></div>
+                                        <span>Normal</span>
+                                    </div>
+                                    <div class="d-flex align-items-center">
+                                        <div class="legend-seat pmr-legend me-2"></div>
+                                        <span>PMR</span>
+                                    </div>
+                                    <div class="d-flex align-items-center">
+                                        <div class="legend-seat stair-legend me-2"></div>
+                                        <span>Escalier</span>
+                                    </div>
+                                    <div class="d-flex align-items-center">
+                                        <div class="legend-seat empty-legend me-2"></div>
+                                        <span>Vide</span>
+                                    </div>
                                 </div>
                             </div>
                             
@@ -511,8 +468,10 @@
                                 <div class="bg-dark text-white py-2 px-4 rounded">ÉCRAN</div>
                             </div>
                             
-                            <div id="seats-grid" class="seats-admin-grid">
-                                <!-- La grille sera générée dynamiquement -->
+                            <div class="seats-overflow">
+                                <div id="seats-grid" class="seats-admin-grid">
+                                    <!-- La grille sera générée dynamiquement -->
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -522,124 +481,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const roomSelect = document.getElementById('room-select');
-            const seatsGridContainer = document.getElementById('seats-grid-container');
-            const selectedRoomTitle = document.getElementById('selected-room-title');
-            const seatsGrid = document.getElementById('seats-grid');
-            
-            roomSelect.addEventListener('change', function() {
-                const roomId = this.value;
-                if (!roomId) {
-                    seatsGridContainer.style.display = 'none';
-                    return;
-                }
-                
-                const selectedOption = this.options[this.selectedIndex];
-                const roomName = selectedOption.text;
-                selectedRoomTitle.textContent = `Configuration des sièges - ${roomName}`;
-                
-                loadRoomSeats(roomId);
-            });
-            
-            async function loadRoomSeats(roomId) {
-                try {
-                    const response = await fetch(`/api/room/${roomId}/seats`);
-                    const data = await response.json();
-                    
-                    if (data.error) {
-                        alert('Erreur: ' + data.error);
-                        return;
-                    }
-                    
-                    generateSeatsGrid(data);
-                    seatsGridContainer.style.display = 'block';
-                } catch (error) {
-                    console.error('Erreur:', error);
-                    alert('Erreur lors du chargement des sièges');
-                }
-            }
-            
-            function generateSeatsGrid(data) {
-                console.log('Données des sièges:', data);
-                const { room, grid } = data;
-                seatsGrid.innerHTML = '';
-                
-                // Générer les rangées (A, B, C, ...)
-                for (let rowIndex = 1; rowIndex <= room.nb_rows; rowIndex++) {
-                    const rowLetter = String.fromCharCode(64 + rowIndex);
-                    const rowDiv = document.createElement('div');
-                    rowDiv.className = 'seats-row';
-                    
-                    // Label de la rangée
-                    const rowLabel = document.createElement('div');
-                    rowLabel.className = 'row-label';
-                    rowLabel.textContent = rowLetter;
-                    rowDiv.appendChild(rowLabel);
-                    
-                    // Sièges de la rangée
-                    for (let colIndex = 1; colIndex <= room.nb_columns; colIndex++) {
-                        const seatDiv = document.createElement('div');
-                        seatDiv.className = 'seat-admin';
-                        seatDiv.textContent = colIndex;
-                        
-                        // Récupérer les données du siège
-                        const seatData = grid[rowLetter] && grid[rowLetter][colIndex];
-                        if (seatData) {
-                            seatDiv.classList.add(seatData.type);
-                            seatDiv.dataset.seatId = seatData.id;
-                            seatDiv.dataset.currentType = seatData.type;
-                            
-                            // Gestionnaire de clic pour changer le type
-                            seatDiv.addEventListener('click', function() {
-                                changeSeatType(this);
-                            });
-                        }
-                        
-                        rowDiv.appendChild(seatDiv);
-                    }
-                    
-                    seatsGrid.appendChild(rowDiv);
-                }
-            }
-            
-            function changeSeatType(seatElement) {
-                const currentType = seatElement.dataset.currentType;
-                const types = ['normal', 'pmr', 'stair', 'empty'];
-                const currentIndex = types.indexOf(currentType);
-                const nextIndex = (currentIndex + 1) % types.length;
-                const newType = types[nextIndex];
-                
-                updateSeatType(seatElement.dataset.seatId, newType, seatElement);
-            }
-            
-            async function updateSeatType(seatId, newType, seatElement) {
-                try {
-                    const response = await fetch(`/api/seat/${seatId}/type`, {
-                        method: 'PUT',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ type: newType })
-                    });
-                    
-                    const result = await response.json();
-                    
-                    if (result.success) {
-                        // Mettre à jour l'apparence du siège
-                        seatElement.className = `seat-admin ${newType}`;
-                        seatElement.dataset.currentType = newType;
-                    } else {
-                        alert('Erreur: ' + result.message);
-                    }
-                } catch (error) {
-                    console.error('Erreur:', error);
-                    alert('Erreur lors de la mise à jour');
-                }
-            }
-        });
-    </script>
+    <script src="{{ url_for('static', filename='js/admin.js') }}"></script>
 
     <!-- Modales de modification -->
     

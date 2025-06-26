@@ -1,4 +1,4 @@
-# 🎬 Cinema Palace - Système de Réservation
+# 🎬 Cinemacousas - Système de Réservation
 
 Une application Flask complète pour la gestion d'un cinéma avec réservation de places en ligne.
 

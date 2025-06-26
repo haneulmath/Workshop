@@ -1,0 +1,154 @@
+/* Styles non utilisés - Archive */
+/* Ces styles ont été identifiés comme non utilisés dans l'application actuelle */
+/* Ils sont archivés ici pour référence future */
+
+/* Légende des sièges - non utilisée actuellement */
+.seat-legend {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin: 15px 0;
+}
+
+.seat-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.seat-legend-icon {
+    width: 20px;
+    height: 20px;
+    border-radius: 3px;
+    border: 1px solid #ccc;
+}
+
+/* Styles de réservation détaillés - non utilisés actuellement */
+.booking-container {
+    margin-top: 2rem;
+}
+
+.seats-selection-grid {
+    display: inline-block;
+    border: 2px solid #dee2e6;
+    padding: 20px;
+    border-radius: 10px;
+    background-color: #f8f9fa;
+    min-width: max-content;
+}
+
+.screen-indicator {
+    background: linear-gradient(45deg, #343a40, #495057);
+    color: white;
+    padding: 10px 30px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+    text-align: center;
+    font-weight: bold;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.booking-summary {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 20px;
+    margin-top: 20px;
+}
+
+.price-breakdown {
+    border-top: 1px solid #dee2e6;
+    padding-top: 15px;
+    margin-top: 15px;
+}
+
+.total-price {
+    font-size: 1.25rem;
+    font-weight: bold;
+    color: #28a745;
+}
+
+.spectator-form {
+    background-color: white;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 15px;
+}
+
+.spectator-header {
+    background-color: #495057;
+    color: white;
+    padding: 10px 15px;
+    margin: -20px -20px 15px -20px;
+    border-radius: 8px 8px 0 0;
+    font-weight: bold;
+}
+
+.price-display {
+    font-weight: bold;
+    color: #28a745;
+    margin-left: 10px;
+}
+
+.price-change {
+    transition: all 0.3s ease;
+}
+
+.ticket {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 15px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.ticket-header {
+    border-bottom: 1px dashed rgba(255,255,255,0.3);
+    padding-bottom: 10px;
+    margin-bottom: 15px;
+}
+
+.ticket-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.qr-placeholder {
+    width: 60px;
+    height: 60px;
+    background-color: rgba(255,255,255,0.9);
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #333;
+    font-weight: bold;
+}
+
+.confirmation-alert {
+    background: linear-gradient(45deg, #28a745, #20c997);
+    border: none;
+    color: white;
+}
+
+.seat-hover-animation {
+    transition: transform 0.2s ease;
+}
+
+.seat-hover-animation:hover {
+    transform: scale(1.1);
+}
+
+.booking-error {
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+    color: #721c24;
+    padding: 15px;
+    border-radius: 5px;
+    margin: 15px 0;
+}

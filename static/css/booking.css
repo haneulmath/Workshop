@@ -1,0 +1,25 @@
+/* Styles spécifiques pour les pages de réservation */
+
+/* Note: La plupart des styles ont été déplacés vers unused-styles.css car ils ne sont pas utilisés actuellement */
+
+/* Styles responsives pour mobile */
+@media (max-width: 768px) {
+    .booking-container {
+        margin-top: 1rem;
+        padding: 0 10px;
+    }
+    
+    .seats-selection-grid {
+        padding: 10px;
+    }
+    
+    .ticket {
+        padding: 15px;
+    }
+    
+    .ticket-info {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+}
