@@ -3,3 +3,11 @@ old/
 venv/
 **/.DS_Store
 .DS_Store
+user/
+.vscode/
+
+# Environment variables (contains secrets)
+.env
+
+# Keep example file for documentation
+!.env.example

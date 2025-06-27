@@ -1,4 +1,36 @@
-# Cinemacousas - Système de Réservation de Cinéma
+# Cinemacousas - Interface d'Administration de Cinéma
+
+## ⚡ Démarrage ultra-rapide
+
+```bash
+# Option 1: Script automatique (recommandé)
+./start_admin.sh
+
+# Option 2: Manuel
+source cinemacousas_env/bin/activate
+python server_admin.py
+```
+
+**Interface :** http://localhost:5003 | **Login :** admin / n'importe quoi
+
+## 🔧 Configuration
+
+Le projet utilise un fichier `.env` pour la configuration. Copiez `.env.example` vers `.env` et modifiez selon vos besoins :
+
+```bash
+cp .env.example .env
+# Éditez .env avec vos paramètres
+```
+
+### Variables principales :
+- `FLASK_PORT` : Port du serveur (défaut: 5003)
+- `FLASK_DEBUG` : Mode debug (défaut: True)
+- `ADMIN_USERNAME` : Nom d'utilisateur admin (défaut: admin)
+- `ADMIN_PASSWORD_REQUIRED` : Mot de passe requis (défaut: False)
+- `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` : Configuration base de données
+- `MAX_POSTER_SIZE_MB` : Taille max des affiches (défaut: 5MB)
+
+---
 
 ## 🚀 Démarrage rapide
 
@@ -6,14 +38,20 @@
 # 1. Activer l'environnement virtuel (déjà configuré)
 source cinemacousas_env/bin/activate
 
-# 2. Lancer l'application
-python3 server.py
+# 2. Lancer l'interface d'administration
+python3 server_admin.py
 ```
 
-L'application sera accessible à : `http://localhost:5000`
+L'interface d'administration sera accessible à : `http://localhost:5003`
+
+**Connexion administrateur :** `admin` / `n'importe quel mot de passe`
+
+**Important :** Utilisez toujours l'environnement virtuel `cinemacousas_env` et non `.venv` pour éviter les problèmes de dépendances.
 
 ## Description
-Application web Flask pour la gestion et réservation de séances de cinéma avec interface d'administration.
+Interface d'administration Flask pour la gestion des films, salles, séances et réservations de cinéma.
+
+**Note :** Cette version contient uniquement les fonctionnalités d'administration. Les fonctionnalités utilisateur (réservation publique, navigation des films) ont été déplacées dans le dossier `user/` pour garder une interface d'administration propre et autonome.
 
 ## Prérequis
 - Python 3.8 ou supérieur
@@ -101,44 +139,85 @@ Les scripts de création de la base de données sont disponibles dans le dossier
 
 ## Lancement de l'application
 
-### Méthode 1 : Avec l'environnement virtuel
+### Interface d'administration (recommandée)
 ```bash
 # Activer l'environnement virtuel
 source cinemacousas_env/bin/activate
 
-# Lancer le serveur
-python3 server.py
+# Lancer l'interface d'administration
+python3 server_admin.py
 ```
 
-### Méthode 2 : Directement (si les dépendances sont installées globalement)
+L'interface d'administration sera accessible à : `http://localhost:5003`
+
+### Application complète (utilisateur + admin)
+Si vous voulez tester la version complète avec les fonctionnalités utilisateur :
 ```bash
-python3 server.py
+# Activer l'environnement virtuel
+source cinemacousas_env/bin/activate
+
+# Aller dans le dossier user
+cd user/
+
+# Lancer le serveur complet
+python3 server_full.py
 ```
 
-L'application sera accessible à l'adresse : `http://localhost:5000`
+L'application complète sera accessible à : `http://localhost:5002`
 
 ## Structure du projet
 
 ```
 Cinemacousas/
-├── server.py              # Serveur Flask principal
+├── server_admin.py         # Serveur d'administration (PRINCIPAL)
 ├── modele.py              # Modèle de données et fonctions BDD
 ├── requirements.txt       # Dépendances Python
-├── README.md             # Ce fichier
-├── templates/            # Templates HTML Jinja2
+├── .env                   # Configuration (à créer/modifier)
+├── .env.example          # Template de configuration
+├── start_admin.sh        # Script de démarrage rapide
+├── templates/            # Templates HTML d'administration
+│   ├── admin.html        # Interface d'administration principale
+│   ├── base.html         # Template de base
+│   └── login.html        # Page de connexion admin
 ├── static/              # Fichiers statiques (CSS, JS, images)
+├── user/                # Fonctionnalités utilisateur (archivées)
+│   ├── server.py        # Ancien serveur principal
+│   ├── server_full.py   # Serveur complet (user + admin)
+│   └── templates/       # Templates utilisateur
+└── docs/                # Documentation et conception (anciennement workspace/)
+    ├── V1.sql, V2.sql...# Scripts SQL
+    └── *.pdf, *.mwb     # Documents techniques
+```
+│   ├── server_full.py   # Serveur complet (user + admin)
+│   └── templates/       # Templates utilisateur
+│       ├── booking_spectators.html
+│       ├── booking_tickets.html
+│       ├── home.html
+│       ├── movie_detail.html
+│       ├── movies.html
+│       ├── my_bookings.html
+│       ├── showing_seats.html
+│       └── showings_today.html
 ├── workspace/           # Scripts SQL et documentation
 ├── old/                # Archives et code de nettoyage
-└── cinemacousas_env/   # Environnement virtuel (créé automatiquement)
+└── cinemacousas_env/   # Environnement virtuel
 ```
 
 ## Fonctionnalités principales
 
-- **Interface utilisateur** : Consultation des films et réservation de places
-- **Interface administrateur** : Gestion des films, salles, séances et réservations
-- **Gestion des sièges** : Support des places normales et PMR
-- **Système de réservation** : Avec informations détaillées des spectateurs
-- **Gestion des affiches** : Upload et affichage des posters de films
+### Interface d'administration (server_admin.py)
+- **Gestion des films** : Ajout, modification, suppression des films
+- **Gestion des affiches** : Upload et suppression des posters
+- **Gestion des salles** : Configuration des salles et des sièges
+- **Gestion des séances** : Programmation des séances
+- **Gestion des réservations** : Consultation et annulation des réservations
+- **Authentification admin** : Accès sécurisé aux fonctionnalités
+
+### Fonctionnalités utilisateur (dans user/server_full.py)
+- **Consultation des films** : Affichage des films et séances
+- **Réservation de places** : Sélection de sièges et informations spectateurs
+- **Gestion des réservations** : Visualisation des réservations personnelles
+- **Système de tarification** : Tarifs différenciés selon l'âge
 
 ## Validation et tests
 
@@ -157,5 +236,35 @@ Ce projet utilise uniquement des dépendances stables et bien maintenues. En cas
 3. Assurez-vous que l'environnement virtuel est activé
 4. Réinstallez les dépendances : `pip install -r requirements.txt --force-reinstall`
 
+## Architecture
+
+Le projet suit une architecture MVC (Modèle-Vue-Contrôleur) :
+- **Modèle** : `modele.py` - Gestion de la base de données et logique métier
+- **Vue** : `templates/` - Interface utilisateur en HTML/Jinja2
+- **Contrôleur** : `server_admin.py` - Routes et logique de contrôle
+
+## Endpoints d'administration
+
+### Pages principales
+- `GET /` - Redirection vers le dashboard admin
+- `GET /admin` - Dashboard d'administration principal
+- `GET /admin/login` - Page de connexion admin
+- `GET /admin/logout` - Déconnexion admin
+
+### API de gestion
+- `POST /admin/movie` - Ajouter un film
+- `POST /admin/movie/<id>/update` - Modifier un film
+- `POST /admin/movie/<id>/delete` - Supprimer un film
+- `POST /admin/movie/<id>/poster/upload` - Upload affiche
+- `POST /admin/room` - Ajouter une salle
+- `POST /admin/showing` - Ajouter une séance
+- `POST /admin/booking/<id>/cancel` - Annuler une réservation
+
+### API utilitaires
+- `GET /movie/<id>/poster` - Servir les affiches
+- `GET /api/room/<id>/seats` - Récupérer la grille des sièges
+- `PUT /api/seat/<id>/type` - Modifier le type d'un siège
+
 ## Dernière mise à jour
-Projet nettoyé et optimisé le 27 juin 2025.
+Projet nettoyé et restructuré le 27 juin 2025.
+**Version actuelle :** Interface d'administration autonome.

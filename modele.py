@@ -4,20 +4,36 @@ import mysql.connector
 from mysql.connector import Error
 import hashlib
 from datetime import datetime, time, timedelta
+import os
+from dotenv import load_dotenv
 
-# Connexion à la BDD
+# Charger les variables d'environnement
+load_dotenv()
+
+# Connexion à la BDD - Configuration depuis .env
 DB_CONFIG = {
-    "host": "82.66.24.184",
-    "port": 3305,
-    "user": "cinemacousas",
-    "password": "password", 
-    "database": "Cinemacousas"
+    "host": os.getenv("DB_HOST", "82.66.24.184"),
+    "port": int(os.getenv("DB_PORT", 3305)),
+    "user": os.getenv("DB_USER", "cinemacousas"),
+    "password": os.getenv("DB_PASSWORD", "password"),
+    "database": os.getenv("DB_NAME", "Cinemacousas"),
+    "pool_size": int(os.getenv("DB_POOL_SIZE", 5)),
+    "pool_reset_session": True,
+    "pool_name": "cinemacousas_pool"
 }
 
 def get_db_connection():
     """Établit et retourne une connexion à la base de données"""
     try:
-        connection = mysql.connector.connect(**DB_CONFIG)
+        # Configuration simple sans pool pour éviter les problèmes
+        config = {
+            "host": os.getenv("DB_HOST", "82.66.24.184"),
+            "port": int(os.getenv("DB_PORT", 3305)),
+            "user": os.getenv("DB_USER", "cinemacousas"),
+            "password": os.getenv("DB_PASSWORD", "password"),
+            "database": os.getenv("DB_NAME", "Cinemacousas")
+        }
+        connection = mysql.connector.connect(**config)
         if connection.is_connected():
             return connection
     except Error as e:

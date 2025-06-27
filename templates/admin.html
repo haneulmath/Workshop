@@ -21,19 +21,13 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('home') }}">Accueil</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('movies') }}">Films</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('showings_today') }}">Séances du jour</a>
+                        <a class="nav-link active" href="{{ url_for('admin_dashboard') }}">Dashboard Admin</a>
                     </li>
                 </ul>
                 <ul class="navbar-nav">
                     {% if session.username %}
                         <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('my_bookings') }}">Réservations</a>
+                            <span class="nav-link">Connecté : {{ session.username }}</span>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="{{ url_for('logout') }}">Déconnexion</a>
@@ -43,9 +37,6 @@
                             <a class="nav-link" href="{{ url_for('login_form') }}">Connexion</a>
                         </li>
                     {% endif %}
-                    <li class="nav-item">
-                        <a class="nav-link active" href="{{ url_for('admin_dashboard') }}">Administration</a>
-                    </li>
                 </ul>
             </div>
         </div>
