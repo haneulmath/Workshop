@@ -1,5 +1,17 @@
 # Cinemacousas - Système de Réservation de Cinéma
 
+## 🚀 Démarrage rapide
+
+```bash
+# 1. Activer l'environnement virtuel (déjà configuré)
+source cinemacousas_env/bin/activate
+
+# 2. Lancer l'application
+python3 server.py
+```
+
+L'application sera accessible à : `http://localhost:5000`
+
 ## Description
 Application web Flask pour la gestion et réservation de séances de cinéma avec interface d'administration.
 
@@ -16,16 +28,34 @@ cd /chemin/vers/votre/dossier
 # Le projet est déjà présent dans ce répertoire
 ```
 
-### 2. Créer un environnement virtuel (recommandé)
+### 2. Utiliser l'environnement virtuel
+
+**L'environnement virtuel `cinemacousas_env` est déjà créé et configuré.**
+
+Pour l'activer :
+```bash
+# Sur macOS/Linux
+source cinemacousas_env/bin/activate
+
+# Sur Windows
+cinemacousas_env\Scripts\activate
+```
+
+Si vous devez recréer l'environnement virtuel :
 ```bash
 python3 -m venv cinemacousas_env
 source cinemacousas_env/bin/activate  # Sur macOS/Linux
-# ou
-cinemacousas_env\Scripts\activate     # Sur Windows
+pip install -r requirements.txt
 ```
 
-### 3. Installer les dépendances
+### 3. Installer les dépendances (si nécessaire)
+
+**Les dépendances sont déjà installées dans `cinemacousas_env`.**
+
+Si vous devez les réinstaller :
 ```bash
+# Assurez-vous que l'environnement virtuel est activé
+source cinemacousas_env/bin/activate
 pip install -r requirements.txt
 ```
 

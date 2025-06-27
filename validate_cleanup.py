@@ -60,9 +60,13 @@ def validate_post_cleanup():
         
         removed_functions = [
             'authenticate_user', 'create_account', 'get_room_by_id',
-            'get_seat_by_position', 'is_room_used_in_showings',
-            'has_room_bookings_for_seat', 'create_movieposter_table',
+            'get_seat_by_position', 'create_movieposter_table',
             'insert_poster_from_file'
+        ]
+        
+        # Fonctions qui ont été ré-ajoutées car nécessaires
+        readded_functions = [
+            'is_room_used_in_showings', 'has_room_bookings_for_seat'
         ]
         
         for func_name in removed_functions:
@@ -70,6 +74,12 @@ def validate_post_cleanup():
                 print(f"   ❌ {func_name} encore présente (devrait être supprimée)")
             else:
                 print(f"   ✅ {func_name} correctement supprimée")
+        
+        for func_name in readded_functions:
+            if hasattr(modele, func_name):
+                print(f"   ✅ {func_name} ré-ajoutée (nécessaire)")
+            else:
+                print(f"   ❌ {func_name} manquante (devrait être présente)")
         
         # Test 4: Test de scénario complet (sans base de données)
         print("\n4️⃣  Test du scénario de conflits d'horaire...")
@@ -82,14 +92,20 @@ def validate_post_cleanup():
         dt1 = modele.parse_time_safely(date, time1)
         dt2 = modele.parse_time_safely(date, time2)
         
-        # Simuler le calcul de conflit avec marge
+        # Simuler le calcul de conflit avec marge - supposons que le film 1 dure 2h
+        film_duration = timedelta(hours=2)
         margin = timedelta(minutes=10)
-        conflict = (dt1 + margin > dt2 - margin) or (dt2 + margin > dt1 - margin)
+        
+        # Fin du film 1 + marge vs début du film 2 - marge
+        end_time1_with_margin = dt1 + film_duration + margin
+        start_time2_with_margin = dt2 - margin
+        
+        conflict = end_time1_with_margin > start_time2_with_margin
         
         if not conflict:
-            print("   ✅ Pas de conflit entre 3h et 12h10 (correct)")
+            print("   ✅ Pas de conflit entre 3h et 12h10 avec film de 2h (correct)")
         else:
-            print("   ❌ Conflit détecté entre 3h et 12h10 (incorrect)")
+            print("   ❌ Conflit détecté entre 3h et 12h10 avec film de 2h (incorrect)")
         
         # Statistiques finales
         print("\n📊 Statistiques du module modele.py:")
