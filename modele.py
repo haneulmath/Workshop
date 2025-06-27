@@ -3,7 +3,7 @@
 import mysql.connector
 from mysql.connector import Error
 import hashlib
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 
 # Connexion à la BDD
 DB_CONFIG = {
@@ -28,64 +28,46 @@ def hash_password(password):
     """Hash un mot de passe avec SHA-256"""
     return hashlib.sha256(password.encode()).hexdigest()
 
+def parse_time_safely(date_str, time_input):
+    """
+    Parse une heure de manière robuste en gérant différents formats et types
+    Retourne un objet datetime combinant la date et l'heure
+    """
+    try:
+        if isinstance(time_input, str):
+            # Essayer différents formats de string
+            for fmt in ["%H:%M:%S", "%H:%M"]:
+                try:
+                    time_obj = datetime.strptime(time_input, fmt).time()
+                    return datetime.combine(datetime.strptime(date_str, "%Y-%m-%d").date(), time_obj)
+                except ValueError:
+                    continue
+            # Si aucun format ne marche, essayer le format complet
+            return datetime.strptime(f"{date_str} {time_input}", "%Y-%m-%d %H:%M:%S")
+        elif isinstance(time_input, timedelta):
+            # C'est un objet timedelta de MySQL, convertir en time
+            total_seconds = int(time_input.total_seconds())
+            hours = total_seconds // 3600
+            minutes = (total_seconds % 3600) // 60
+            seconds = total_seconds % 60
+            time_obj = time(hours, minutes, seconds)
+            return datetime.combine(datetime.strptime(date_str, "%Y-%m-%d").date(), time_obj)
+        elif hasattr(time_input, 'hour'):
+            # C'est déjà un objet time ou datetime
+            if hasattr(time_input, 'date'):
+                # C'est un datetime complet
+                return time_input
+            else:
+                # C'est un objet time
+                return datetime.combine(datetime.strptime(date_str, "%Y-%m-%d").date(), time_input)
+        else:
+            # Tenter de convertir en string et re-parser
+            return parse_time_safely(date_str, str(time_input))
+    except Exception as e:
+        print(f"Erreur de parsing pour {time_input} (type: {type(time_input)}): {e}")
+        raise ValueError(f"Format d'heure invalide: {time_input}")
+
 # ===== FONCTIONS POUR L'AUTHENTIFICATION =====
-
-def authenticate_user(email, password):
-    """Authentifie un utilisateur"""
-    connection = get_db_connection()
-    
-    if connection is None:
-        return None
-        
-    try:
-        cursor = connection.cursor(dictionary=True)
-        password_hash = hash_password(password)
-        
-        cursor.execute("SELECT * FROM account WHERE email = %s AND password_hash = %s", 
-                      (email, password_hash))
-        user = cursor.fetchone()
-        
-        return user
-        
-    except Error as e:
-        print(f"Erreur lors de l'authentification: {e}")
-        return None
-        
-    finally:
-        if connection.is_connected():
-            cursor.close()
-            connection.close()
-
-def create_account(email, password):
-    """Crée un nouveau compte utilisateur"""
-    connection = get_db_connection()
-    
-    if connection is None:
-        return False, "Erreur de connexion à la base de données"
-        
-    try:
-        cursor = connection.cursor()
-        
-        # Vérifier si l'email existe déjà
-        cursor.execute("SELECT id FROM account WHERE email = %s", (email,))
-        if cursor.fetchone():
-            return False, "Un compte avec cet email existe déjà"
-        
-        # Créer le compte
-        password_hash = hash_password(password)
-        cursor.execute("INSERT INTO account (email, password_hash) VALUES (%s, %s)", 
-                      (email, password_hash))
-        connection.commit()
-        
-        return True, "Compte créé avec succès"
-        
-    except Error as e:
-        return False, f"Erreur lors de la création du compte: {e}"
-        
-    finally:
-        if connection.is_connected():
-            cursor.close()
-            connection.close()
 
 # ===== FONCTIONS POUR LES FILMS =====
 
@@ -238,28 +220,6 @@ def get_all_rooms():
         
     except Error as e:
         print(f"Erreur lors de la récupération des salles: {e}")
-        return None
-        
-    finally:
-        if connection.is_connected():
-            cursor.close()
-            connection.close()
-
-def get_room_by_id(room_id):
-    """Récupère une salle par son ID"""
-    connection = get_db_connection()
-    
-    if connection is None:
-        return None
-        
-    try:
-        cursor = connection.cursor(dictionary=True)
-        cursor.execute("SELECT * FROM room WHERE id = %s", (room_id,))
-        room = cursor.fetchone()
-        return room
-        
-    except Error as e:
-        print(f"Erreur lors de la récupération de la salle: {e}")
         return None
         
     finally:
@@ -484,31 +444,6 @@ def get_room_seats_grid(room_id):
         
     except Error as e:
         print(f"Erreur lors de la récupération de la grille: {e}")
-        return None
-        
-    finally:
-        if connection.is_connected():
-            cursor.close()
-            connection.close()
-
-def get_seat_by_position(room_id, seat_row, seat_column):
-    """Récupère un siège par sa position"""
-    connection = get_db_connection()
-    
-    if connection is None:
-        return None
-        
-    try:
-        cursor = connection.cursor(dictionary=True)
-        cursor.execute("""
-            SELECT * FROM seat 
-            WHERE room_id = %s AND seat_row = %s AND seat_column = %s
-        """, (room_id, seat_row, seat_column))
-        
-        return cursor.fetchone()
-        
-    except Error as e:
-        print(f"Erreur lors de la récupération du siège: {e}")
         return None
         
     finally:
@@ -1150,10 +1085,13 @@ def add_showing(date, starttime, baseprice, room_id, movie_id):
     try:
         cursor = connection.cursor()
         
-        # Vérifier que le film existe
-        cursor.execute("SELECT id FROM movie WHERE id = %s", (movie_id,))
-        if not cursor.fetchone():
+        # Vérifier que le film existe et récupérer sa durée
+        cursor.execute("SELECT id, duration FROM movie WHERE id = %s", (movie_id,))
+        movie_result = cursor.fetchone()
+        if not movie_result:
             return False, "Film non trouvé"
+        
+        movie_duration = movie_result[1]  # durée en minutes
         
         # Vérifier que la salle existe
         cursor.execute("SELECT id FROM room WHERE id = %s", (room_id,))
@@ -1161,13 +1099,37 @@ def add_showing(date, starttime, baseprice, room_id, movie_id):
             return False, "Salle non trouvée"
         
         # Vérifier qu'il n'y a pas de conflit d'horaire dans la même salle
+        # avec une marge de 10 minutes avant et après
         cursor.execute("""
-            SELECT id FROM showing 
-            WHERE room_id = %s AND date = %s AND starttime = %s
-        """, (room_id, date, starttime))
+            SELECT s.id, s.starttime, m.duration, m.name as movie_name
+            FROM showing s
+            JOIN movie m ON s.movie_id = m.id
+            WHERE s.room_id = %s AND s.date = %s
+        """, (room_id, date))
         
-        if cursor.fetchone():
-            return False, "Une séance existe déjà à cette heure dans cette salle"
+        existing_showings = cursor.fetchall()
+        
+        if existing_showings:
+            from datetime import datetime, timedelta
+            
+            # Convertir la nouvelle heure de début
+            new_start = parse_time_safely(date, starttime)
+            new_end = new_start + timedelta(minutes=movie_duration)
+            
+            for existing in existing_showings:
+                existing_start = parse_time_safely(date, existing[1])
+                existing_end = existing_start + timedelta(minutes=existing[2])
+                
+                # Ajouter les marges de 10 minutes
+                new_start_with_margin = new_start - timedelta(minutes=10)
+                new_end_with_margin = new_end + timedelta(minutes=10)
+                existing_start_with_margin = existing_start - timedelta(minutes=10)
+                existing_end_with_margin = existing_end + timedelta(minutes=10)
+                
+                # Vérifier les chevauchements avec les marges
+                if (new_start_with_margin < existing_end_with_margin and 
+                    new_end_with_margin > existing_start_with_margin):
+                    return False, f"Conflit d'horaire avec la séance de '{existing[3]}' à {existing[1]} (marge de 10 min requise)"
         
         # Ajouter la séance
         cursor.execute("""
@@ -1202,10 +1164,13 @@ def update_showing(showing_id, date, starttime, baseprice, room_id, movie_id):
         if not cursor.fetchone():
             return False, "Séance non trouvée"
         
-        # Vérifier que le film existe
-        cursor.execute("SELECT id FROM movie WHERE id = %s", (movie_id,))
-        if not cursor.fetchone():
+        # Vérifier que le film existe et récupérer sa durée
+        cursor.execute("SELECT id, duration FROM movie WHERE id = %s", (movie_id,))
+        movie_result = cursor.fetchone()
+        if not movie_result:
             return False, "Film non trouvé"
+        
+        movie_duration = movie_result[1]  # durée en minutes
         
         # Vérifier que la salle existe
         cursor.execute("SELECT id FROM room WHERE id = %s", (room_id,))
@@ -1213,13 +1178,37 @@ def update_showing(showing_id, date, starttime, baseprice, room_id, movie_id):
             return False, "Salle non trouvée"
         
         # Vérifier qu'il n'y a pas de conflit d'horaire (en excluant la séance actuelle)
+        # avec une marge de 10 minutes avant et après
         cursor.execute("""
-            SELECT id FROM showing 
-            WHERE room_id = %s AND date = %s AND starttime = %s AND id != %s
-        """, (room_id, date, starttime, showing_id))
+            SELECT s.id, s.starttime, m.duration, m.name as movie_name
+            FROM showing s
+            JOIN movie m ON s.movie_id = m.id
+            WHERE s.room_id = %s AND s.date = %s AND s.id != %s
+        """, (room_id, date, showing_id))
         
-        if cursor.fetchone():
-            return False, "Une autre séance existe déjà à cette heure dans cette salle"
+        existing_showings = cursor.fetchall()
+        
+        if existing_showings:
+            from datetime import datetime, timedelta
+            
+            # Convertir la nouvelle heure de début
+            new_start = parse_time_safely(date, starttime)
+            new_end = new_start + timedelta(minutes=movie_duration)
+            
+            for existing in existing_showings:
+                existing_start = parse_time_safely(date, existing[1])
+                existing_end = existing_start + timedelta(minutes=existing[2])
+                
+                # Ajouter les marges de 10 minutes
+                new_start_with_margin = new_start - timedelta(minutes=10)
+                new_end_with_margin = new_end + timedelta(minutes=10)
+                existing_start_with_margin = existing_start - timedelta(minutes=10)
+                existing_end_with_margin = existing_end + timedelta(minutes=10)
+                
+                # Vérifier les chevauchements avec les marges
+                if (new_start_with_margin < existing_end_with_margin and 
+                    new_end_with_margin > existing_start_with_margin):
+                    return False, f"Conflit d'horaire avec la séance de '{existing[3]}' à {existing[1]} (marge de 10 min requise)"
         
         # Mettre à jour la séance
         cursor.execute("""
@@ -1270,59 +1259,6 @@ def delete_showing(showing_id):
     except Error as e:
         print(f"Erreur lors de la suppression de la séance: {e}")
         return False, f"Erreur lors de la suppression: {e}"
-        
-    finally:
-        if connection.is_connected():
-            cursor.close()
-            connection.close()
-
-def is_room_used_in_showings(room_id):
-    """Vérifie si une salle est utilisée dans des séances"""
-    connection = get_db_connection()
-    
-    if connection is None:
-        return True  # En cas d'erreur, on considère que la salle est utilisée pour éviter les suppressions
-        
-    try:
-        cursor = connection.cursor()
-        cursor.execute("SELECT COUNT(*) FROM showing WHERE room_id = %s", (room_id,))
-        count = cursor.fetchone()[0]
-        return count > 0
-        
-    except Error as e:
-        print(f"Erreur lors de la vérification de l'utilisation de la salle: {e}")
-        return True  # En cas d'erreur, on considère que la salle est utilisée
-        
-    finally:
-        if connection.is_connected():
-            cursor.close()
-            connection.close()
-
-def has_room_bookings_for_seat(seat_id):
-    """Vérifie si la salle contenant ce siège a des séances avec des réservations"""
-    connection = get_db_connection()
-    
-    if connection is None:
-        return True  # En cas d'erreur, on considère qu'il y a des réservations pour éviter les modifications
-        
-    try:
-        cursor = connection.cursor()
-        
-        # Récupérer la salle du siège et vérifier s'il y a des réservations pour des séances dans cette salle
-        query = """
-        SELECT COUNT(*) 
-        FROM booking b
-        JOIN showing s ON b.showing_id = s.id
-        JOIN seat st ON s.room_id = st.room_id
-        WHERE st.id = %s
-        """
-        cursor.execute(query, (seat_id,))
-        count = cursor.fetchone()[0]
-        return count > 0
-        
-    except Error as e:
-        print(f"Erreur lors de la vérification des réservations pour la salle: {e}")
-        return True  # En cas d'erreur, on considère qu'il y a des réservations
         
     finally:
         if connection.is_connected():
@@ -1425,100 +1361,65 @@ def delete_movie_poster(movie_id):
 
 # ===== FONCTIONS D'ADMINISTRATION DES AFFICHES =====
 
-def create_movieposter_table():
-    """Crée la table movieposter si elle n'existe pas"""
+# ===== FONCTIONS UTILITAIRES DE VALIDATION =====
+
+def is_room_used_in_showings(room_id):
+    """Vérifie si une salle est utilisée dans des séances"""
     connection = get_db_connection()
     
     if connection is None:
-        return False, "Erreur de connexion à la base de données"
+        return False
         
     try:
         cursor = connection.cursor()
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS movieposter (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                movie_id INT NOT NULL,
-                image LONGBLOB NOT NULL,
-                name VARCHAR(255) NOT NULL,
-                mime_type VARCHAR(100) NOT NULL,
-                file_size INT,
-                upload_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                is_primary BOOLEAN DEFAULT TRUE,
-                FOREIGN KEY (movie_id) REFERENCES movie(id) ON DELETE CASCADE,
-                INDEX idx_movie_id (movie_id)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-        """)
-        connection.commit()
-        return True, "Table movieposter créée avec succès"
+        cursor.execute("SELECT COUNT(*) FROM showing WHERE room_id = %s", (room_id,))
+        count = cursor.fetchone()[0]
+        return count > 0
         
     except Error as e:
-        print(f"Erreur lors de la création de la table movieposter: {e}")
-        return False, f"Erreur lors de la création: {str(e)}"
+        print(f"Erreur lors de la vérification d'utilisation de la salle: {e}")
+        return False
         
     finally:
         if connection.is_connected():
             cursor.close()
             connection.close()
 
-def insert_poster_from_file(movie_id, file_path, filename=None):
-    """Insère une affiche depuis un fichier local"""
-    import os
-    import mimetypes
-    
-    if not os.path.exists(file_path):
-        return False, f"Fichier non trouvé: {file_path}"
-    
-    if filename is None:
-        filename = os.path.basename(file_path)
-    
-    # Déterminer le type MIME
-    mime_type, _ = mimetypes.guess_type(file_path)
-    if mime_type is None:
-        mime_type = 'application/octet-stream'
-    
-    try:
-        # Lire le fichier
-        with open(file_path, 'rb') as f:
-            image_data = f.read()
-        
-        # Utiliser la fonction existante save_movie_poster
-        return save_movie_poster(movie_id, filename, mime_type, image_data)
-        
-    except Exception as e:
-        return False, f"Erreur lors de la lecture du fichier: {str(e)}"
-
-def list_movie_posters():
-    """Liste toutes les affiches dans la base de données"""
+def has_room_bookings_for_seat(seat_id):
+    """Vérifie si la salle contenant un siège a des séances avec des réservations"""
     connection = get_db_connection()
     
     if connection is None:
-        return None
+        return False
         
     try:
-        cursor = connection.cursor(dictionary=True)
-        cursor.execute("""
-            SELECT 
-                mp.id,
-                mp.movie_id,
-                m.name as movie_name,
-                mp.name as poster_name,
-                mp.mime_type,
-                mp.file_size,
-                mp.upload_date,
-                mp.is_primary
-            FROM movieposter mp
-            JOIN movie m ON mp.movie_id = m.id
-            ORDER BY m.name
-        """)
+        cursor = connection.cursor()
+        # Récupérer l'ID de la salle du siège
+        cursor.execute("SELECT room_id FROM seat WHERE id = %s", (seat_id,))
+        result = cursor.fetchone()
         
-        posters = cursor.fetchall()
-        return posters
+        if not result:
+            return False
+            
+        room_id = result[0]
+        
+        # Vérifier s'il y a des réservations pour des séances dans cette salle
+        cursor.execute("""
+            SELECT COUNT(*) 
+            FROM booking b
+            JOIN showing s ON b.showing_id = s.id
+            WHERE s.room_id = %s
+        """, (room_id,))
+        
+        count = cursor.fetchone()[0]
+        return count > 0
         
     except Error as e:
-        print(f"Erreur lors de la récupération des affiches: {e}")
-        return None
+        print(f"Erreur lors de la vérification des réservations: {e}")
+        return False
         
     finally:
         if connection.is_connected():
             cursor.close()
             connection.close()
+
